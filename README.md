@@ -24,12 +24,12 @@ All editable business details live in one file: [src/config/site.ts](src/config/
 
 ```ts
 export const siteConfig = {
-  brandName: "Recogido Dispatch",
+  brandName: "Recogido",
   shortName: "Recogido",
-  legalName: "Recogido LLC",
-  isLLCConfirmed: false,
+  legalName: "RECOGIDO LLC",
+  isLLCConfirmed: true,
   phone: "+15513890281",
-  phoneDisplay: "+1 (551) 389-0281",
+  phoneDisplay: "+1 551-389-0281",
   email: "admin@recogidoapp.com",
   domain: "recogidoapp.com",
   url: "https://recogidoapp.com",
@@ -40,41 +40,17 @@ Update the phone number, email, domain, or names here and the entire site (nav, 
 
 Page text (English and Spanish) lives in [src/lib/i18n/translations.ts](src/lib/i18n/translations.ts) if you need to edit the copy itself.
 
-## 4. Confirm or hide "Recogido LLC"
+## 4. Business identity
 
-The footer only displays "Operated by Recogido LLC" when `isLLCConfirmed` is `true` in `src/config/site.ts`. Until the LLC is officially approved by the state, leave it as `false` and the site will only show the "Recogido Dispatch" brand name. Once approved, change it to:
+The public brand is Recogido and the confirmed legal business name is RECOGIDO LLC. The contact section displays the legal name, and the footer displays the legal name in the copyright and operator information.
 
-```ts
-isLLCConfirmed: true,
-```
+## 5. Contact and legal links
 
-## 5. Connect the contact form
+The site follows its existing single-page architecture: Contact, Privacy Policy, and Terms of Service are available at `/#contact`, `/#privacy`, and `/#terms`.
 
-The contact form currently uses a **placeholder submission function** (`submitContactForm` in [src/components/ContactForm.tsx](src/components/ContactForm.tsx)) that only logs the submission to the browser console. **No messages are actually sent or delivered.** Connect a real backend before launch:
+The contact section in [src/components/ContactForm.tsx](src/components/ContactForm.tsx) uses direct `mailto:admin@recogidoapp.com` and `tel:+15513890281` links. The nonfunctional demo form has been removed. No form submissions are collected and no success confirmations are shown. Email and call links open the visitor's configured email or phone application.
 
-### Option A: Formspree
-
-1. Create a form at [formspree.io](https://formspree.io) and copy your form endpoint (e.g. `https://formspree.io/f/xxxxxxx`).
-2. Replace the body of `submitContactForm` with a `fetch` call:
-
-```ts
-async function submitContactForm(data: ContactFormData) {
-  const response = await fetch("https://formspree.io/f/xxxxxxx", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) throw new Error("Form submission failed");
-}
-```
-
-### Option B: Resend (via a Next.js API route)
-
-1. Add `RESEND_API_KEY` to your environment variables (see below).
-2. Create `src/app/api/contact/route.ts` that uses the [Resend SDK](https://resend.com/docs) to send an email to `admin@recogidoapp.com`.
-3. Update `submitContactForm` to `fetch("/api/contact", { method: "POST", body: JSON.stringify(data) })`.
-
-Whichever service you choose, keep API keys server-side (environment variables, never committed to git).
+Only restore an online form once a real message-delivery implementation, failure handling, and applicable privacy disclosures are ready.
 
 ## 6. Deploy to Vercel
 
@@ -97,17 +73,12 @@ Or connect the GitHub repository directly at [vercel.com/new](https://vercel.com
 
 ## 8. Environment variables
 
-None are required to run the site as-is (the contact form is a placeholder). If you connect a real form backend:
-
-| Variable | Used for |
-| --- | --- |
-| `RESEND_API_KEY` | Required only if you implement the Resend API route option above. |
-
-Set variables locally in a `.env.local` file (already git-ignored) and in **Vercel → Settings → Environment Variables** for deployed environments.
+None are required. The site uses direct email and phone links, with no message-delivery backend, API keys, or paid contact services.
 
 ## 9. Production build
 
 ```bash
+npm run lint
 npm run build
 npm run start
 ```

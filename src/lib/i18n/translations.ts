@@ -47,20 +47,16 @@ export interface Translations {
   };
   contact: {
     title: string;
+    description: string;
+    businessLabel: string;
     phoneLabel: string;
     emailLabel: string;
     websiteLabel: string;
     serviceTypeLabel: string;
     serviceTypeValue: string;
-    formTitle: string;
-    formName: string;
-    formBusiness: string;
-    formPhone: string;
-    formEmail: string;
-    formMessage: string;
-    consentText: string;
-    submit: string;
-    successMessage: string;
+    formUnavailable: string;
+    emailUs: string;
+    callUs: string;
   };
   messagingConsent: {
     text: string;
@@ -88,7 +84,6 @@ export interface Translations {
     p4: string;
     p5: string;
     p6: string;
-    attorneyNotice: string;
     contactLine: string;
   };
   footer: {
@@ -153,33 +148,29 @@ export const translations: Record<Language, Translations> = {
         "Participating independent drivers may receive availability notifications and decide whether to respond. Responding is voluntary, and work, assignments, and compensation are never guaranteed.",
     },
     contact: {
-      title: "Contact",
+      title: "Contact Recogido",
+      description:
+        "Contact Recogido for dispatch support, business inquiries, technical assistance, or information about our communication services.",
+      businessLabel: "Legal Business Name",
       phoneLabel: "Phone",
       emailLabel: "Email",
       websiteLabel: "Website",
       serviceTypeLabel: "Service Type",
-      serviceTypeValue: "Remote dispatch and communication coordination",
-      formTitle: "Send Us a Message",
-      formName: "Name",
-      formBusiness: "Business Name",
-      formPhone: "Phone",
-      formEmail: "Email",
-      formMessage: "Message",
-      consentText:
-        "I agree that Recogido may contact me regarding my inquiry. Message and data rates may apply. Consent is not a condition of purchase.",
-      submit: "Send Message",
-      successMessage:
-        "Thanks — this is a demo form. No message was actually sent. Connect a form service to enable delivery (see README).",
+      serviceTypeValue: "Remote dispatch and communication services for local businesses and delivery drivers",
+      formUnavailable:
+        "Our online contact form is being updated. Please contact us directly by email or phone.",
+      emailUs: "Email Us",
+      callUs: "Call Us",
     },
     messagingConsent: {
       text: "By choosing to receive messages, users agree to receive dispatch-related notifications from Recogido. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for assistance.",
     },
     privacy: {
       title: "Privacy Policy",
-      intro: "This Privacy Policy explains how Recogido collects and uses information.",
+      intro: "This Privacy Policy explains how RECOGIDO LLC, operating as Recogido, collects and uses information for its remote dispatch and communication services.",
       collectTitle: "Information We Collect",
       collectDesc:
-        "We may collect names, business names, phone numbers, email addresses, and messages submitted through our contact form or phone calls.",
+        "We may collect names, business names, phone numbers, email addresses, and inquiry or dispatch details that you provide by email, phone, or messaging.",
       useTitle: "How We Use Information",
       useDesc:
         "Information is used to coordinate dispatch communication, respond to inquiries, and provide customer support.",
@@ -194,14 +185,12 @@ export const translations: Record<Language, Translations> = {
     },
     terms: {
       title: "Terms of Service",
-      p1: "Recogido provides dispatch and communication coordination services only.",
+      p1: "RECOGIDO LLC, operating as Recogido, provides remote dispatch and communication coordination services for local businesses and delivery drivers only.",
       p2: "Recogido is not a transportation carrier and does not provide delivery or transportation services.",
       p3: "Delivery and transportation services are performed by independent drivers and third parties who are not employees or agents of Recogido.",
       p4: "Service availability is not guaranteed and may vary based on driver availability.",
       p5: "Users are responsible for providing accurate and current information when contacting Recogido.",
       p6: "This website may not be used for any unlawful purpose.",
-      attorneyNotice:
-        "These Terms of Service and the Privacy Policy are provided as a general starting point and should be reviewed by a qualified attorney before production launch.",
       contactLine: "Questions about these terms can be sent to",
     },
     footer: {
@@ -264,33 +253,29 @@ export const translations: Record<Language, Translations> = {
         "Los conductores independientes participantes pueden recibir notificaciones de disponibilidad y decidir si responder. Responder es voluntario, y el trabajo, las asignaciones y la compensación nunca están garantizados.",
     },
     contact: {
-      title: "Contacto",
+      title: "Contacta a Recogido",
+      description:
+        "Contacta a Recogido para soporte de despacho, consultas comerciales, asistencia técnica o información sobre nuestros servicios de comunicación.",
+      businessLabel: "Nombre Legal de la Empresa",
       phoneLabel: "Teléfono",
       emailLabel: "Correo Electrónico",
       websiteLabel: "Sitio Web",
       serviceTypeLabel: "Tipo de Servicio",
-      serviceTypeValue: "Coordinación remota de despacho y comunicación",
-      formTitle: "Envíanos un Mensaje",
-      formName: "Nombre",
-      formBusiness: "Nombre del Negocio",
-      formPhone: "Teléfono",
-      formEmail: "Correo Electrónico",
-      formMessage: "Mensaje",
-      consentText:
-        "Acepto que Recogido pueda contactarme sobre mi consulta. Pueden aplicarse tarifas de mensajes y datos. El consentimiento no es una condición de compra.",
-      submit: "Enviar Mensaje",
-      successMessage:
-        "Gracias — este es un formulario de demostración. No se envió ningún mensaje. Conecte un servicio de formularios para habilitar el envío (ver README).",
+      serviceTypeValue: "Servicios remotos de despacho y comunicación para negocios locales y conductores de reparto",
+      formUnavailable:
+        "Estamos actualizando nuestro formulario de contacto en línea. Por favor, contáctanos directamente por correo electrónico o teléfono.",
+      emailUs: "Enviar Correo",
+      callUs: "Llamar",
     },
     messagingConsent: {
       text: "Al elegir recibir mensajes, los usuarios aceptan recibir notificaciones relacionadas con el despacho de Recogido. La frecuencia de los mensajes varía. Pueden aplicarse tarifas de mensajes y datos. Responda STOP para cancelar la suscripción o HELP para obtener ayuda.",
     },
     privacy: {
       title: "Política de Privacidad",
-      intro: "Esta Política de Privacidad explica cómo Recogido recopila y utiliza la información.",
+      intro: "Esta Política de Privacidad explica cómo RECOGIDO LLC, que opera como Recogido, recopila y utiliza información para sus servicios remotos de despacho y comunicación.",
       collectTitle: "Información que Recopilamos",
       collectDesc:
-        "Podemos recopilar nombres, nombres de negocios, números de teléfono, direcciones de correo electrónico y mensajes enviados a través de nuestro formulario de contacto o llamadas telefónicas.",
+        "Podemos recopilar nombres, nombres de negocios, números de teléfono, direcciones de correo electrónico y detalles de consultas o despacho que proporcione por correo electrónico, teléfono o mensajería.",
       useTitle: "Cómo Usamos la Información",
       useDesc:
         "La información se utiliza para coordinar la comunicación de despacho, responder consultas y brindar atención al cliente.",
@@ -305,14 +290,12 @@ export const translations: Record<Language, Translations> = {
     },
     terms: {
       title: "Términos de Servicio",
-      p1: "Recogido solo proporciona servicios de coordinación de despacho y comunicación.",
+      p1: "RECOGIDO LLC, que opera como Recogido, solo proporciona servicios remotos de coordinación de despacho y comunicación para negocios locales y conductores de reparto.",
       p2: "Recogido no es un transportista y no brinda servicios de entrega o transporte.",
       p3: "Los servicios de entrega y transporte son realizados por conductores independientes y terceros que no son empleados ni agentes de Recogido.",
       p4: "La disponibilidad del servicio no está garantizada y puede variar según la disponibilidad de los conductores.",
       p5: "Los usuarios son responsables de proporcionar información precisa y actualizada al contactar a Recogido.",
       p6: "Este sitio web no puede utilizarse para ningún propósito ilegal.",
-      attorneyNotice:
-        "Estos Términos de Servicio y la Política de Privacidad se proporcionan como un punto de partida general y deben ser revisados por un abogado calificado antes del lanzamiento en producción.",
       contactLine: "Las preguntas sobre estos términos pueden enviarse a",
     },
     footer: {

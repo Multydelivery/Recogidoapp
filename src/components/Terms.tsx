@@ -21,10 +21,6 @@ export function Terms() {
           ))}
         </ul>
 
-        <p className="mt-8 rounded-2xl border border-navy/15 bg-white px-5 py-4 text-sm font-medium text-navy">
-          {t.terms.attorneyNotice}
-        </p>
-
         <p className="mt-6 text-sm text-navy/70">
           {t.terms.contactLine}{" "}
           <a href={`mailto:${siteConfig.email}`} className="font-semibold text-blue">

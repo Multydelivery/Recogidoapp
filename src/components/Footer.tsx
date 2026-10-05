@@ -6,7 +6,7 @@ import { siteConfig } from "@/config/site";
 
 export function Footer() {
   const { t } = useLanguage();
-  const year = new Date().getFullYear();
+  const year = 2026;
 
   return (
     <footer className="bg-navy py-12 text-white/80">
@@ -27,27 +27,30 @@ export function Footer() {
             </div>
           </div>
 
-          <div className="text-sm">
+          <div className="min-w-0 text-sm">
             <a href={`tel:${siteConfig.phone}`} className="block hover:text-white">
               {siteConfig.phoneDisplay}
             </a>
-            <a href={`mailto:${siteConfig.email}`} className="mt-1 block hover:text-white">
+            <a href={`mailto:${siteConfig.email}`} className="mt-1 block wrap-break-word hover:text-white">
               {siteConfig.email}
             </a>
           </div>
 
-          <nav className="flex gap-4 text-sm" aria-label="Legal">
+          <nav className="flex flex-wrap gap-4 text-sm" aria-label="Legal">
             <a href="#privacy" className="hover:text-white">
               {t.footer.privacyLink}
             </a>
             <a href="#terms" className="hover:text-white">
               {t.footer.termsLink}
             </a>
+            <a href="#contact" className="hover:text-white">
+              {t.nav.contact}
+            </a>
           </nav>
         </div>
 
         <p className="mt-8 border-t border-white/10 pt-6 text-xs">
-          © {year} {siteConfig.brandName}. {t.footer.rightsReserved}
+          © {year} {siteConfig.legalName}. {t.footer.rightsReserved}
         </p>
       </div>
     </footer>
