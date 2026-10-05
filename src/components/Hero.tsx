@@ -25,7 +25,7 @@ export function Hero() {
             </a>
             <a
               href={`mailto:${siteConfig.email}`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+              className="inline-flex min-h-11 w-full touch-manipulation items-center justify-center gap-2 rounded-full border border-white/30 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 sm:w-auto"
             >
               <MailIcon className="h-4 w-4" />
               {t.hero.emailUs}

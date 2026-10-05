@@ -23,7 +23,7 @@ export function Terms() {
 
         <p className="mt-6 text-sm text-navy/70">
           {t.terms.contactLine}{" "}
-          <a href={`mailto:${siteConfig.email}`} className="font-semibold text-blue">
+          <a href={`mailto:${siteConfig.email}`} className="inline-flex min-h-11 max-w-full touch-manipulation items-center wrap-anywhere font-semibold text-blue underline underline-offset-4">
             {siteConfig.email}
           </a>
           .

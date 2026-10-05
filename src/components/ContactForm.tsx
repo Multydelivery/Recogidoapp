@@ -40,7 +40,7 @@ export function ContactForm() {
               <div className="min-w-0">
                 <dt className="font-medium text-navy/60">{t.contact.emailLabel}</dt>
                 <dd>
-                  <a href={`mailto:${siteConfig.email}`} className="wrap-break-word font-semibold text-navy hover:text-blue">
+                  <a href={`mailto:${siteConfig.email}`} className="inline-flex min-h-11 max-w-full touch-manipulation items-center wrap-anywhere font-semibold text-navy underline underline-offset-4 hover:text-blue">
                     {siteConfig.email}
                   </a>
                 </dd>
@@ -72,7 +72,7 @@ export function ContactForm() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <a
               href={`mailto:${siteConfig.email}`}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-blue px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue"
+              className="inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 rounded-full bg-blue px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue"
             >
               <MailIcon className="h-5 w-5" />
               {t.contact.emailUs}

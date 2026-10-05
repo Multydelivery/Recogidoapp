@@ -31,7 +31,7 @@ export function Footer() {
             <a href={`tel:${siteConfig.phone}`} className="block hover:text-white">
               {siteConfig.phoneDisplay}
             </a>
-            <a href={`mailto:${siteConfig.email}`} className="mt-1 block wrap-break-word hover:text-white">
+            <a href={`mailto:${siteConfig.email}`} className="mt-1 flex min-h-11 max-w-full touch-manipulation items-center wrap-anywhere underline underline-offset-4 hover:text-white">
               {siteConfig.email}
             </a>
           </div>
