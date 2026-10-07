@@ -9,7 +9,10 @@ import { DeliveryStatus } from "./DeliveryStatus";
 import { DeliveryHistory } from "./DeliveryHistory";
 import styles from "./DispatchDemo.module.css";
 
-export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic }) {
+export function DispatchTerminal({ restaurant, initialMockMode = true }: {
+  restaurant: RestaurantPublic;
+  initialMockMode?: boolean;
+}) {
   const [token, setToken] = useState<string | null>(null);
   const [pin, setPin] = useState("");
   const [initializing, setInitializing] = useState(true);
@@ -21,6 +24,8 @@ export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [mockMode, setMockMode] = useState(initialMockMode);
+  const [connectionFailed, setConnectionFailed] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [storageNotice, setStorageNotice] = useState<string | null>(null);
   const [now, setNow] = useState<string | null>(null);
@@ -36,7 +41,11 @@ export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic 
   const storageKey = `recogido.dispatch.device.${restaurant.slug}`;
 
   const applySnapshot = useCallback((data: DispatchSnapshot) => {
-    setHistory(data.history);
+    setMockMode(data.mockMode);
+    setConnectionFailed(false);
+    setHistory((previous) => data.mockMode ? data.history :
+      [...data.history, ...previous.filter((item) => !data.history.some((next) => next.requestId === item.requestId))]
+        .filter((item) => new Date(item.createdAt).toDateString() === new Date().toDateString()).slice(0, 5));
     if (data.request?.requestId !== dismissedId.current || (data.request && isOpenRequest(data.request.status))) {
       setRequest(data.request);
     }
@@ -50,6 +59,7 @@ export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic 
   const handleFailure = useCallback((error: unknown) => {
     if (!mounted.current || controller.current?.signal.aborted) return;
     setConnected(false);
+    setConnectionFailed(true);
     setMessage(error instanceof DispatchApiError ? error.message : "No se pudo contactar o verificar el servidor. Reintenta; no se confirmó la operación.");
     if (error instanceof DispatchApiError && error.statusCode === 401) {
       setToken(null);
@@ -195,7 +205,7 @@ export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic 
   }
 
   return (
-    <DispatchFrame restaurantName={restaurant.name} now={now} connected={connected}>
+    <DispatchFrame restaurantName={restaurant.name} now={now} connected={connected} mockMode={mockMode} connectionFailed={connectionFailed}>
       <div className={styles.workspace}>
         <section className={styles.orderCard} aria-label="Solicitud de entregas">
           <div className={styles.cardContent}>
@@ -216,7 +226,7 @@ export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic 
                 {request ? (
                   <DeliveryStatus headingRef={heading} stage={request.status} request={{
                     ...request,
-                    status: request.status === "claimed" ? "assigned" : request.status === "cancelled" ? "cancelled" : "searching",
+                    status: request.status === "claimed" ? "assigned" : request.status === "cancelled" ? "cancelled" : request.status === "error" ? "error" : "searching",
                   }} />
                 ) : (
                   <div ref={keypad}>
@@ -236,9 +246,9 @@ export function DispatchTerminal({ restaurant }: { restaurant: RestaurantPublic 
             {message && <p className={styles.errorNotice} role="alert">{message}</p>}
             {storageNotice && <p className={styles.soundNotice} role="status">{storageNotice}</p>}
           </div>
-          <div className={styles.cardFooter}>Simulador del servidor · Sin envíos reales</div>
+          <div className={styles.cardFooter}>{mockMode ? "Simulador del servidor · Sin envíos reales" : "Estado confirmado por el servicio central"}</div>
         </section>
-        <DeliveryHistory requests={token ? history : []} serverBacked />
+        <DeliveryHistory requests={token ? history : []} serverBacked mockMode={mockMode} />
       </div>
       <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {request ? `${dispatchStatusLabels[request.status]}. Solicitud ${request.requestId}.` : "Selecciona la cantidad de entregas."}

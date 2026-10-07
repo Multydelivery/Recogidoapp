@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DispatchTerminal } from "@/components/dispatch/DispatchTerminal";
-import { DispatchError, getRestaurants } from "@/lib/dispatch/server/config";
+import { DispatchError, getRestaurants, isDispatchMockMode } from "@/lib/dispatch/server/config";
 import { DispatchFrame } from "@/components/dispatch/DispatchFrame";
 import styles from "@/components/dispatch/DispatchDemo.module.css";
 
@@ -34,5 +34,5 @@ export default async function RestaurantDispatchPage({ params }: {
   }
   const restaurant = restaurants.find((entry) => entry.slug === slug);
   if (!restaurant) notFound();
-  return <DispatchTerminal key={slug} restaurant={{ slug: restaurant.slug, name: restaurant.name }} />;
+  return <DispatchTerminal key={slug} restaurant={{ slug: restaurant.slug, name: restaurant.name }} initialMockMode={isDispatchMockMode()} />;
 }

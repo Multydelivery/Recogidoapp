@@ -15,7 +15,7 @@ export async function handleApi(action: () => Response | Promise<Response>) {
       return json({ error: error.message }, error.statusCode);
     }
     console.error("Unexpected dispatch error:", error instanceof Error ? error.name : "Unknown");
-    return json({ error: "Error interno del simulador. Intenta nuevamente." }, 500);
+    return json({ error: "Error interno de Dispatch. Intenta nuevamente." }, 500);
   }
 }
 

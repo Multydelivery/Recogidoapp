@@ -1,4 +1,17 @@
-export type DispatchStatus = "pending" | "offer_sent" | "searching" | "claimed" | "cancelled";
+export type DispatchStatus = "pending" | "offer_sent" | "searching" | "claimed" | "cancelled" | "error";
+
+export interface DeliveryRequestResult {
+  success: boolean;
+  requestId: string;
+  status: DispatchStatus;
+  restaurantName?: string;
+  deliveryCount?: number;
+  driverName?: string;
+  driverPhone?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  message?: string;
+}
 
 export interface DispatchRequest {
   requestId: string;
@@ -14,7 +27,7 @@ export interface RestaurantPublic {
 }
 
 export interface DispatchSnapshot {
-  mockMode: true;
+  mockMode: boolean;
   restaurant: RestaurantPublic;
   request: DispatchRequest | null;
   history: DispatchRequest[];
@@ -30,4 +43,5 @@ export const dispatchStatusLabels: Record<DispatchStatus, string> = {
   searching: "Buscando conductor",
   claimed: "Conductor asignado",
   cancelled: "Solicitud cancelada",
+  error: "Error en la solicitud",
 };

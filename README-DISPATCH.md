@@ -1,7 +1,9 @@
-# Recogido Dispatch — fase 2 (solo simulación)
+# Recogido Dispatch — fase 3 (adaptador preparado, demostración activa)
 
 La página pública `/` y el demo original `/dispatch/demo` siguen disponibles.
-**Twilio y Make NO están conectados. No hay SMS, llamadas, ofertas reales ni APIs externas.**
+**Twilio y Make NO están conectados. La configuración local sigue en
+`DISPATCH_MOCK_MODE=true`: no hay SMS, llamadas, ofertas reales ni llamadas externas.**
+El adaptador real está preparado para pruebas controladas, no activado.
 
 ## Configuración local
 
@@ -23,8 +25,18 @@ Variables exclusivamente del servidor (no usar el prefijo `NEXT_PUBLIC_`):
 
 | Variable | Contenido |
 | --- | --- |
-| `DISPATCH_MOCK_MODE` | `true`. Si se omite, el modo simulado es el único habilitado. Cualquier otro valor devuelve 503; el modo real no está implementado. |
+| `DISPATCH_MOCK_MODE` | Mantener `true`. Si se omite, se usa demo. `false` selecciona el adaptador central; cualquier otro valor devuelve 503. |
 | `RESTAURANTS_JSON` | Lista JSON de restaurantes: `slug`, `name`, `phone` en formato internacional y `deviceToken` (6–128 caracteres alfanuméricos, `_` o `-`). |
+| `RECOGIDO_DISPATCH_SUBMIT_URL` | URL HTTPS privada de la Twilio Function central para crear solicitudes. Vacía en el ejemplo. |
+| `RECOGIDO_DISPATCH_MANAGE_URL` | URL HTTPS privada de la Function central para cancelar. Vacía en el ejemplo. |
+| `RECOGIDO_DISPATCH_STATUS_URL` | URL HTTPS privada de la Function central para consultar estado mediante POST. Vacía en el ejemplo. |
+| `RECOGIDO_DISPATCH_API_SECRET` | Secreto servidor a servidor. Vacío en el ejemplo. Nunca usar `NEXT_PUBLIC_`. |
+| `DISPATCH_REQUEST_TIMEOUT_MS` | `10000` por defecto; entero entre 1 y 10000 ms. Se limita para caber en el timeout de 15 s del navegador. |
+
+Las URLs no admiten usuario, contraseña, query ni fragmento. El secreto se envía
+solo en el cuerpo form-urlencoded. Redirecciones externas están bloqueadas.
+Las tres API Routes validan toda la configuración real al empezar cada petición
+si `mock=false`. En demo no necesitan estas URLs ni el secreto.
 
 La configuración se valida en el servidor. No hay valores de restaurantes
 predeterminados ocultos: si falta o es inválida, se muestra un error de configuración.
@@ -141,6 +153,163 @@ Errores JSON: `{ "error": "mensaje" }`. Códigos: 400 entrada inválida o campos
 extra (incluido nombre/teléfono), 401 PIN inválido, 404 solicitud no encontrada,
 409 conflicto, 413 cuerpo demasiado grande, 415 tipo no JSON y 503 configuración,
 modo no admitido o capacidad agotada.
+
+## Arquitectura de fase 3
+
+```text
+Tableta → API Route de Vercel → Twilio Function central
+                                → Twilio Sync + WhatsApp
+                                → Make → alerta después de 20 segundos
+```
+
+Este es el **flujo futuro**. Vercel no llama Make; los 20 segundos de alerta
+se implementarán en el backend central, no con temporizadores en la web.
+`src/lib/dispatch/recogido-api.ts` es server-only. Exporta
+`submitDeliveryRequest`, `cancelDeliveryRequest` y `getDeliveryRequestStatus`.
+Usa fetch POST form-urlencoded, `cache: "no-store"` y AbortController
+con timeout que incluye la lectura de JSON. No hace reintentos automáticos.
+
+Los errores son tipados (`RecogidoApiError`: configuration, timeout, network,
+http, invalid_response, rejected), con un mensaje fijo seguro y una propiedad
+`retryable`. Un timeout devuelve 504; fallos de red, HTTP upstream o protocolo
+devuelven 502 salvo 404/409, que conservan su significado. No se devuelven
+mensajes externos ni se registran cuerpos, URLs o secretos. Los logs solo
+incluyen operación, requestId (o `latest` antes de conocerlo) y resultado/código.
+
+### Contrato que deben implementar las Twilio Functions
+
+Este contrato fue elegido para evitar almacenar solicitudes reales en la
+memoria efímera de Vercel. **Debe implementarse y verificarse antes de activar
+el modo real.**
+
+Los tres endpoints validan `secret` y utilizan `restaurantId` como identificador
+del restaurante. Aquí es el `slug` de RESTAURANTS_JSON.
+
+| Operación | Campos enviados por Vercel |
+| --- | --- |
+| Submit | `restaurantId`, `restaurantName`, `restaurantPhone`, `deliveryCount`, `requestId`, `idempotencyKey`, `secret` |
+| Cancel | `action=cancel`, `restaurantId`, `requestId`, `secret` |
+| Status | `restaurantId`, `requestId`, `secret` (POST; nunca secreto en query) |
+
+Nombre y teléfono salen de la configuración segura del servidor, nunca del
+navegador. En submit Vercel propone un ID `WEB_[timestamp]_[random]`, pero la
+Function central debe guardar de forma **atómica y persistente** la relación
+`restaurantId + idempotencyKey → solicitud canónica` en un almacén compartido.
+Un reintento conserva la clave, aunque otra instancia de Vercel proponga otro
+requestId: el backend debe devolver el ID original y no repetir mensajes
+WhatsApp, ofertas ni acciones de Make. Misma clave con otra cantidad y nuevas
+claves cuando ya hay una solicitud abierta deben devolver 409.
+
+Para status sin requestId, Vercel envía el campo vacío. La Function debe
+devolver la última solicitud del restaurante o, si no existe:
+
+```json
+{ "success": true, "restaurantId": "la-fonda", "request": null }
+```
+
+Esto permite validar el dispositivo y recuperar el estado al recargar sin
+guardar solicitudes reales en Vercel. `request: null` solo es válido para
+consultas sin ID; no constituye éxito de submit o cancel.
+
+Para una solicitud, la respuesta externa es plana:
+
+```json
+{
+  "success": true,
+  "restaurantId": "la-fonda",
+  "requestId": "WEB_1791338715017_9f67c567ff85f8c0",
+  "status": "searching",
+  "deliveryCount": 2,
+  "createdAt": "2026-10-07T02:05:15.017Z",
+  "updatedAt": "2026-10-07T02:05:25.017Z"
+}
+```
+
+`restaurantId` es obligatorio para comprobar pertenencia. En consultas por ID
+y cancelaciones, también se exige que el ID devuelto coincida exactamente.
+La Function **debe verificar la pertenencia en el servidor** antes de leer
+o modificar y cancelar atómicamente solo pending, offer_sent o searching:
+una asignación concurrente debe producir 409. Vercel hace además una consulta
+previa al cancel, pero esa comprobación no sustituye la validación atómica central.
+
+El adaptador normaliza a `{ success, requestId, status, restaurantName?,
+deliveryCount?, driverName?, driverPhone?, createdAt?, updatedAt?, message? }`.
+Admite únicamente pending, offer_sent, searching, claimed, cancelled o error.
+`deliveryCount` y `createdAt` son obligatorios para presentar la solicitud en el
+terminal; una respuesta incompleta falla explícitamente. Los campos adicionales
+no se pasan al navegador. El mensaje externo se descarta; un estado error
+produce un mensaje seguro. El teléfono del conductor, si existe, se valida,
+pero tampoco se expone en la respuesta pública actual.
+
+La API pública conserva `{ mockMode, restaurant, request, history }` para
+no romper los componentes. En modo real el historial contiene la solicitud
+consultada; el terminal acumula hasta cinco solicitudes vistas en la sesión.
+Al recargar recupera la última solicitud, no un historial persistente completo.
+
+### Mock frente a modo real
+
+- **Mock=true:** mismo almacén, tiempos, polling y cancelación de fase 2;
+  cero fetch externo. El demo original continúa siempre en demostración.
+- **Mock=false:** solo estados confirmados por la Function central; no avance
+  por tiempo ni temporizadores simulados. Idempotencia, propiedad y cancelación
+  definitiva son responsabilidad del backend central.
+- Indicador: “Modo de demostración” en demo, “Sistema conectado” tras una
+  respuesta válida en modo real y “Sin conexión” si falla una consulta.
+  Antes de validar muestra “Sin verificar”, sin variables ni endpoints.
+
+### Probar sin Twilio
+
+Con Node.js 22.15+ (o 24), usa el runner node:test ya existente:
+
+```powershell
+npm run test:dispatch:adapter
+```
+
+No necesita URLs reales ni `.env.local`; configura variables ficticias solo
+en el proceso de prueba e intercepta todo fetch. El loader de prueba usa
+TypeScript ya instalado; no añade dependencias y no forma parte del bundle.
+Prueba modo mock sin llamadas externas, las tres rutas sin configuración real,
+timeout, red, HTTP 500, JSON inválido, normalización, pertenencia,
+reintentos idempotentes y ausencia de secretos en respuestas y logs.
+
+Para probar la tableta normalmente, conserva `DISPATCH_MOCK_MODE=true`,
+ejecuta `npm run dev` y usa las URLs/PINs de arriba.
+
+### Checklist antes de activar producción
+
+- [ ] Crear/configurar las tres Twilio Functions HTTPS centrales y su secreto.
+- [ ] Implementar y probar el contrato anterior, incluida consulta sin requestId.
+- [ ] Usar almacenamiento compartido/persistente (Twilio Sync u otro) con
+  idempotencia atómica, aislamiento y cancelación frente a asignación concurrente.
+- [ ] Integrar WhatsApp y Make exclusivamente desde el backend central y probar
+  la alerta de 20 s, sin duplicaciones ante reintentos.
+- [ ] Sustituir PINs y teléfonos ficticios, endurecer autenticación del dispositivo,
+  limitar intentos y verificar HTTPS, permisos y ciclo de vida de credenciales.
+- [ ] Configurar las variables privadas en un entorno de preview aislado de Vercel.
+- [ ] Ejecutar pruebas de contrato y revisión operativa con un restaurante controlado,
+  incluyendo errores, caídas de red, timeouts y dos pestañas concurrentes.
+- [ ] Solo después, cambiar el modo a false **en ese entorno controlado** y desplegar.
+- [ ] Mantener rollback a true y verificar que no se repitan operaciones ya enviadas.
+
+**No cambies DISPATCH_MOCK_MODE a false hasta configurar y validar las Twilio
+Functions. Este trabajo no crea ni conecta Functions, Sync, WhatsApp o Make.**
+
+## Sistema visual compartido
+
+Dispatch reutiliza el logo `public/recogidoapplogo.png`, las fuentes Geist y
+Geist Mono y la paleta de la página pública: turquesa `#14b8ab` (hover
+`#0e9488`), azul marino `#0d2748`, blanco y superficie `#f4f6f9`.
+Las variables semánticas `--brand-*` en `src/app/globals.css` apuntan a los
+colores existentes sin modificar la página pública. Los bordes y fondos suaves
+se derivan de esos colores, sin una segunda paleta.
+
+El terminal usa los radios y sombras de Tailwind 4 (`rounded-2xl`,
+`rounded-3xl`, `shadow-sm`) y botones principales tipo píldora, conservando
+alturas táctiles de al menos 64 px. El texto azul marino de 19 px en negrita sobre el botón turquesa
+es una adaptación de contraste respecto al texto blanco del sitio público,
+incluyendo el estado hover.
+Verde confirma, ámbar indica solicitudes pendientes y rojo indica cancelación
+o error; todos los estados conservan mensajes textuales.
 
 ## Persistencia y límites
 

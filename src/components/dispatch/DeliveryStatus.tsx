@@ -15,23 +15,25 @@ const steps = ["Solicitud recibida", "Oferta enviada", "Buscando conductor", "Co
 export function DeliveryStatus({ request, headingRef, stage }: DeliveryStatusProps) {
   const assigned = request.status === "assigned";
   const cancelled = request.status === "cancelled";
+  const failed = request.status === "error";
+  const pending = stage === "pending" || stage === "offer_sent" || stage === "searching";
   const stageIndex = stage === "pending" ? 0 : stage === "offer_sent" ? 1 : assigned ? 3 : 2;
-  const title = cancelled
+  const title = failed ? "ERROR EN LA SOLICITUD" : cancelled
     ? "SOLICITUD CANCELADA"
     : assigned
       ? "CONDUCTOR ASIGNADO"
       : "SOLICITUD ENVIADA";
 
   return (
-    <div className={`${styles.statusPanel} ${cancelled ? styles.cancelledPanel : styles.successPanel}`}>
+    <div className={`${styles.statusPanel} ${cancelled || failed ? styles.cancelledPanel : pending ? styles.warningPanel : styles.successPanel}`}>
       <div className={styles.statusIcon} aria-hidden="true">
-        {cancelled ? <span>×</span> : assigned ? <CarIcon /> : <CheckIcon />}
+        {cancelled || failed ? <span>×</span> : assigned ? <CarIcon /> : <CheckIcon />}
       </div>
       <h1 className={styles.statusTitle} tabIndex={-1} ref={headingRef}>{title}</h1>
       <p className={styles.deliveryTotal}>
         {request.deliveryCount} {request.deliveryCount === 1 ? "ENTREGA" : "ENTREGAS"}
       </p>
-      {assigned ? (
+      {failed ? <p>El servicio central informó un error. Verifica el estado antes de volver a solicitar.</p> : assigned ? (
         <p className={styles.driverName}>{request.driverName}</p>
       ) : cancelled ? (
         <p>La búsqueda se detuvo. Puedes crear una nueva solicitud.</p>
@@ -39,7 +41,7 @@ export function DeliveryStatus({ request, headingRef, stage }: DeliveryStatusPro
         <p className={styles.searching}><DispatchIcon aria-hidden="true" /> {stage ? dispatchStatusLabels[stage].toUpperCase() : "BUSCANDO CONDUCTOR"}</p>
       )}
       <p className={styles.requestId}>Solicitud: <span>{request.requestId}</span></p>
-      {!cancelled && (
+      {!cancelled && !failed && (
         <ol className={styles.progress} aria-label="Progreso de la solicitud">
           {steps.map((step, index) => {
             const complete = assigned || index < stageIndex;

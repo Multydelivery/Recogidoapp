@@ -17,7 +17,7 @@ function isRequest(value: unknown): value is DispatchRequest {
 
 function isSnapshot(value: unknown): value is DispatchSnapshot {
   return !!value && typeof value === "object" &&
-    "mockMode" in value && value.mockMode === true &&
+    "mockMode" in value && typeof value.mockMode === "boolean" &&
     "restaurant" in value && !!value.restaurant && typeof value.restaurant === "object" &&
     "slug" in value.restaurant && typeof value.restaurant.slug === "string" &&
     "name" in value.restaurant && typeof value.restaurant.name === "string" &&

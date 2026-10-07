@@ -4,9 +4,10 @@ import styles from "./DispatchDemo.module.css";
 
 const labels = { ...demoStatusLabels, ...dispatchStatusLabels };
 
-export function DeliveryHistory({ requests, serverBacked = false }: {
+export function DeliveryHistory({ requests, serverBacked = false, mockMode = true }: {
   requests: (DemoRequest | DispatchRequest)[];
   serverBacked?: boolean;
+  mockMode?: boolean;
 }) {
   return (
     <aside className={styles.history} aria-labelledby="history-title">
@@ -17,7 +18,7 @@ export function DeliveryHistory({ requests, serverBacked = false }: {
         </div>
         <span className={styles.historyCount}>{requests.length}</span>
       </div>
-      <p className={styles.historyHint}>{serverBacked ? "Últimas cinco solicitudes del restaurante." : "Últimas cinco solicitudes de esta sesión."}</p>
+      <p className={styles.historyHint}>{serverBacked && mockMode ? "Últimas cinco solicitudes del restaurante." : "Últimas cinco solicitudes de esta sesión."}</p>
       {requests.length === 0 ? (
         <div className={styles.emptyHistory}>
           <span aria-hidden="true">↗</span>
@@ -42,7 +43,7 @@ export function DeliveryHistory({ requests, serverBacked = false }: {
           ))}
         </ol>
       )}
-      <p className={styles.memoryNote}>{serverBacked ? "Simulación en memoria del servidor. Se borra al reiniciar y caduca a las 24 horas." : "Solo en memoria. Al recargar, el historial se borra."}</p>
+      <p className={styles.memoryNote}>{serverBacked ? mockMode ? "Simulación en memoria del servidor. Se borra al reiniciar y caduca a las 24 horas." : "Estados del servicio central. El historial local conserva las solicitudes vistas en esta sesión." : "Solo en memoria. Al recargar, el historial se borra."}</p>
     </aside>
   );
 }

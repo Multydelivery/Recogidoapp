@@ -9,6 +9,16 @@
   --color-blue: #14b8ab;
   --color-blue-dark: #0e9488;
   --color-surface: #f4f6f9;
+  --brand-primary: var(--color-blue);
+  --brand-primary-hover: var(--color-blue-dark);
+  --brand-secondary: var(--color-navy);
+  --brand-background: var(--background);
+  --brand-surface: var(--color-surface);
+  --brand-text: var(--foreground);
+  --brand-text-muted: color-mix(in srgb, var(--brand-text) 70%, var(--brand-background));
+  --status-success: #137746;
+  --status-warning: #705114;
+  --status-danger: #ac2920;
 }
 
 @theme inline {

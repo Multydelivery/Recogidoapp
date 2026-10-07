@@ -13,10 +13,45 @@ export interface RestaurantConfig {
   deviceToken: string;
 }
 
-export function getRestaurants(): RestaurantConfig[] {
-  if ((process.env.DISPATCH_MOCK_MODE ?? "true") !== "true") {
-    throw new DispatchError(503, "El modo real no está disponible. Activa DISPATCH_MOCK_MODE=true.");
+export function isDispatchMockMode() {
+  const mode = process.env.DISPATCH_MOCK_MODE ?? "true";
+  if (mode !== "true" && mode !== "false") {
+    throw new DispatchError(503, "Configuración de Dispatch inválida.");
   }
+  return mode === "true";
+}
+
+export function getBackendConfig() {
+  const invalid = () => new DispatchError(503, "La integración central no está configurada correctamente.");
+  const url = (name: string) => {
+    const raw = process.env[name];
+    if (!raw) throw invalid();
+    let parsed: URL;
+    try { parsed = new URL(raw); } catch { throw invalid(); }
+    if (parsed.protocol !== "https:" || parsed.username || parsed.password || parsed.search || parsed.hash) throw invalid();
+    return parsed.toString();
+  };
+  const secret = process.env.RECOGIDO_DISPATCH_API_SECRET;
+  if (!secret?.trim()) throw invalid();
+  const rawTimeout = process.env.DISPATCH_REQUEST_TIMEOUT_MS ?? "10000";
+  if (!/^\d+$/.test(rawTimeout)) throw invalid();
+  const timeoutMs = Number(rawTimeout);
+  if (timeoutMs < 1 || timeoutMs > 10_000) throw invalid();
+  return {
+    submitUrl: url("RECOGIDO_DISPATCH_SUBMIT_URL"),
+    manageUrl: url("RECOGIDO_DISPATCH_MANAGE_URL"),
+    statusUrl: url("RECOGIDO_DISPATCH_STATUS_URL"),
+    secret,
+    timeoutMs,
+  };
+}
+
+export function validateDispatchConfiguration() {
+  if (!isDispatchMockMode()) getBackendConfig();
+}
+
+export function getRestaurants(): RestaurantConfig[] {
+  isDispatchMockMode();
   const raw = process.env.RESTAURANTS_JSON;
   if (!raw) throw new DispatchError(503, "Falta la configuración de restaurantes en el servidor.");
 
