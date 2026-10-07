@@ -1,18 +1,21 @@
 import type { Ref } from "react";
 import { CarIcon, CheckIcon, DispatchIcon } from "@/components/icons";
 import type { DemoRequest } from "@/lib/dispatch/demo-types";
+import { dispatchStatusLabels, type DispatchStatus } from "@/lib/dispatch/dispatch-types";
 import styles from "./DispatchDemo.module.css";
 
 interface DeliveryStatusProps {
   request: DemoRequest;
   headingRef: Ref<HTMLHeadingElement>;
+  stage?: DispatchStatus;
 }
 
 const steps = ["Solicitud recibida", "Oferta enviada", "Buscando conductor", "Conductor asignado"];
 
-export function DeliveryStatus({ request, headingRef }: DeliveryStatusProps) {
+export function DeliveryStatus({ request, headingRef, stage }: DeliveryStatusProps) {
   const assigned = request.status === "assigned";
   const cancelled = request.status === "cancelled";
+  const stageIndex = stage === "pending" ? 0 : stage === "offer_sent" ? 1 : assigned ? 3 : 2;
   const title = cancelled
     ? "SOLICITUD CANCELADA"
     : assigned
@@ -33,14 +36,14 @@ export function DeliveryStatus({ request, headingRef }: DeliveryStatusProps) {
       ) : cancelled ? (
         <p>La búsqueda se detuvo. Puedes crear una nueva solicitud.</p>
       ) : (
-        <p className={styles.searching}><DispatchIcon aria-hidden="true" /> BUSCANDO CONDUCTOR</p>
+        <p className={styles.searching}><DispatchIcon aria-hidden="true" /> {stage ? dispatchStatusLabels[stage].toUpperCase() : "BUSCANDO CONDUCTOR"}</p>
       )}
       <p className={styles.requestId}>Solicitud: <span>{request.requestId}</span></p>
       {!cancelled && (
         <ol className={styles.progress} aria-label="Progreso de la solicitud">
           {steps.map((step, index) => {
-            const complete = assigned || index < 2;
-            const current = assigned ? index === 3 : index === 2;
+            const complete = assigned || index < stageIndex;
+            const current = index === stageIndex;
             return (
               <li key={step} aria-current={current ? "step" : undefined}>
                 <span className={complete || current ? styles.activeStep : styles.pendingStep} aria-hidden="true">

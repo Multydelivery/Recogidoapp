@@ -50,6 +50,11 @@
 .connection { display: flex; align-items: center; gap: 24px; }
 .connection > span { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .connection i { width: 8px; height: 8px; border-radius: 50%; background: #73e4a4; box-shadow: 0 0 0 4px #73e4a414; }
+.connection i[data-offline="true"] { background: #f5bc65; box-shadow: none; }
+.pinLabel { display: block; margin-top: 24px; font-weight: 650; }
+.pinInput { display: block; width: 100%; min-height: 64px; padding: 16px; margin: 12px 0 20px; border: 2px solid #c8dbcf; border-radius: 12px; font-size: 22px; }
+.pinInput:focus-visible { outline: 3px solid #087b55; outline-offset: 3px; }
+.errorNotice { padding: 16px; margin-top: 18px; border: 1px solid #e8b7b2; border-radius: 12px; background: #fff5f4; color: #ac2920; }
 .connection time { font-size: 25px; font-variant-numeric: tabular-nums; border-left: 1px solid #ffffff30; padding-left: 24px; }
 
 .main { max-width: 1440px; margin: auto; padding: 28px 36px 20px; }

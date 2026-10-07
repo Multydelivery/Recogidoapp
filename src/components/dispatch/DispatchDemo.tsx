@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DispatchIcon, RestaurantIcon } from "@/components/icons";
-import { formatDemoTime, type DemoRequest, type DemoStatus } from "@/lib/dispatch/demo-types";
+import { type DemoRequest, type DemoStatus } from "@/lib/dispatch/demo-types";
+import { DispatchFrame } from "./DispatchFrame";
 import { DeliveryKeypad } from "./DeliveryKeypad";
 import { DeliveryStatus } from "./DeliveryStatus";
 import { DeliveryHistory } from "./DeliveryHistory";
@@ -174,25 +174,7 @@ export function DispatchDemo() {
           : "Selecciona la cantidad de entregas.";
 
   return (
-    <div lang="es" className={styles.shell}>
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <div className={styles.brand}>
-            <span className={styles.brandIcon}><DispatchIcon aria-hidden="true" /></span>
-            <div><strong>RECOGIDO</strong><span>DISPATCH</span></div>
-          </div>
-          <div className={styles.restaurant}><RestaurantIcon aria-hidden="true" /><div><span>Restaurante</span><strong>La Fonda Demo</strong></div></div>
-          <div className={styles.connection}>
-            <span><i aria-hidden="true" /> En línea</span>
-            <time dateTime={now ?? undefined} aria-label="Hora actual">{now ? formatDemoTime(now) : "--:--"}</time>
-          </div>
-        </div>
-      </header>
-      <main className={styles.main}>
-        <div className={styles.workspaceHeading}>
-          <p>Panel de restaurante <span>/ Despacho de entregas</span></p>
-          <span className={styles.demoBadge}>MODO DEMO</span>
-        </div>
+    <DispatchFrame restaurantName="La Fonda Demo" now={now}>
         <div className={styles.workspace}>
           <section className={styles.orderCard} aria-label="Solicitud de entregas">
             <div className={styles.cardContent}>
@@ -223,12 +205,7 @@ export function DispatchDemo() {
           </section>
           <DeliveryHistory requests={todayHistory} />
         </div>
-        <footer className={styles.footer}>
-          <span>RECOGIDO DISPATCH <span>· Terminal de restaurante</span></span>
-          <span>Demo local. Sin Twilio, Make ni APIs externas.</span>
-        </footer>
         <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
-      </main>
-    </div>
+    </DispatchFrame>
   );
 }

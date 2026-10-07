@@ -88,6 +88,9 @@ npm run start
 
 ## 10. Restaurant dispatch demo
 
+For the restaurant-specific simulated API terminal (phase 2), see
+[README-DISPATCH.md](README-DISPATCH.md). Twilio and Make remain disconnected.
+
 Run `npm run dev` and open [http://localhost:3000/dispatch/demo](http://localhost:3000/dispatch/demo).
 The public marketing page at `/` is unchanged.
 

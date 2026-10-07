@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:dispatch": "node --env-file=.env.local --test tests/dispatch-api.test.mjs"
   },
   "dependencies": {
     "next": "16.3.6",
