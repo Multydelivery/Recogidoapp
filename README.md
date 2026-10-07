@@ -79,11 +79,32 @@ None are required. The site uses direct email and phone links, with no message-d
 
 ```bash
 npm run lint
+npx tsc --noEmit
 npm run build
 npm run start
 ```
 
 `npm run build` must complete with no errors before deploying. `npm run start` serves the production build locally on [http://localhost:3000](http://localhost:3000).
+
+## 10. Restaurant dispatch demo
+
+Run `npm run dev` and open [http://localhost:3000/dispatch/demo](http://localhost:3000/dispatch/demo).
+The public marketing page at `/` is unchanged.
+
+This phase is **demo-only**. It does not connect to Twilio, Make, external APIs,
+drivers, or a database, and needs no credentials. The online indicator represents
+the simulated terminal, not a live dispatch service.
+
+Select 1–3 deliveries or use **4+** to choose 4–9. Submission locks immediately,
+waits 800 ms, and generates a `DEMO_[timestamp]` request. After five seconds of
+searching, a simulated driver is assigned with a short Web Audio confirmation
+when supported by the browser. A visual notice is shown if sound is unavailable.
+
+**CANCELAR ÚLTIMA** requires browser confirmation and only works during the
+search. Assigned requests cannot be cancelled. After assignment or cancellation,
+**NUEVA SOLICITUD** resets the keypad. The last five requests from the current
+local day are kept only in memory; refreshing or leaving the page clears them.
+No localStorage is used.
 
 ## Legal notice
 
@@ -94,4 +115,3 @@ The Privacy Policy and Terms of Service sections included on this site are a gen
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 - [Vercel Deployment Documentation](https://nextjs.org/docs/app/building-your-application/deploying)
-
