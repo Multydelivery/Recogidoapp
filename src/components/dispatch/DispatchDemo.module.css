@@ -100,6 +100,9 @@
 .cancelButton { width: 100%; margin-top: 14px; background: var(--danger-tint); border: 1px solid var(--status-danger); color: var(--status-danger); font-size: 16px; padding: 16px; }
 .cancelButton:not(:disabled):hover { background: color-mix(in srgb, var(--status-danger) 12%, var(--brand-background)); }
 .cancelButton:disabled { color: var(--brand-text-muted); border-color: var(--border); background: var(--brand-surface); }
+.disconnectButton { width: 100%; margin-top: 14px; background: var(--brand-surface); border: 1px solid var(--border); color: var(--brand-text-muted); font-size: 14px; font-weight: 650; padding: 14px; border-radius: calc(infinity * 1px); cursor: pointer; }
+.disconnectButton:not(:disabled):hover { background: var(--brand-tint); color: var(--brand-text); border-color: var(--brand-primary); }
+.disconnectButton:disabled { opacity: 0.55; cursor: not-allowed; }
 .cancelHint { text-align: center; color: var(--brand-text-muted); font-size: 12px; margin-top: 12px; }
 .soundNotice { font-size: 13px; margin-top: 16px; color: var(--status-warning); background: var(--warning-tint); padding: 12px; border-radius: var(--radius-lg); }
 .cardFooter { background: var(--brand-surface); border-top: 1px solid var(--border); padding: 16px; text-align: center; color: var(--brand-text-muted); font-size: 12px; }

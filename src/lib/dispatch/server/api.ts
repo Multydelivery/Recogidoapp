@@ -43,6 +43,13 @@ export async function handleApi(action: () => Response | Promise<Response>) {
   } catch (error: unknown) {
     if (error instanceof DispatchError) {
       if (error.statusCode >= 500) console.error("Dispatch configuration or capacity error:", error.message);
+      if (error.code === "FEATURE_NOT_CONFIGURED") {
+        return json({
+          success: false,
+          code: "FEATURE_NOT_CONFIGURED",
+          error: "This feature is not configured for the live pilot",
+        }, 503);
+      }
       return json({ code: error.code.toUpperCase(), error: error.message }, error.statusCode);
     }
     console.error("Unexpected dispatch error:", error instanceof Error ? error.name : "Unknown");
@@ -56,8 +63,10 @@ export function authenticate(request: Request, slug: unknown) {
     throw new DispatchError(400, "Identificador de restaurante inválido.");
   }
   const restaurant = restaurants.find((entry) => entry.slug === slug);
+  const deviceToken = request.headers.get("x-device-token")?.trim();
   const header = request.headers.get("authorization");
-  const token = header?.startsWith("Bearer ") ? header.slice(7) : "";
+  const bearerToken = header?.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  const token = deviceToken || bearerToken;
   const hash = (value: string) => createHash("sha256").update(value).digest();
   const matches = timingSafeEqual(hash(token.slice(0, 129)), hash(restaurant?.deviceToken ?? ""));
   if (!restaurant || !token || token.length > 128 || !matches || !restaurant.active) {

@@ -17,6 +17,15 @@ export interface RestaurantPublic {
   maxActiveDeliveriesPerDriver: number;
 }
 
+export interface DispatchCapabilities {
+  liveDispatch: boolean;
+  canCreate: boolean;
+  canReadStatus: boolean;
+  canCancel: boolean;
+  canResend: boolean;
+  canLoadHistory: boolean;
+}
+
 export interface DeliveryAssignment {
   requestId: string;
   deliveryNumber: number;
@@ -48,6 +57,7 @@ export interface DispatchSnapshot {
   restaurant: RestaurantPublic;
   request: DispatchRequest | null;
   history: DispatchRequest[];
+  operationStatus?: "created_with_timer_error";
 }
 
 export function isOpenRequest(status: DispatchStatus) {

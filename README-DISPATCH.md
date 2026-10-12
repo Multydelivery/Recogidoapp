@@ -98,6 +98,14 @@ transmite al mock sólo los IDs abiertos. El historial del servidor conserva las
 y el perfil por lote de Brisas, sin PIN, servicios externos ni cambios en la
 landing. Ambos usan los tipos compartidos de Dispatch.
 
+## Prueba piloto de Twilio
+
+La guía de habilitación restringida a `restaurant-test`, sus variables
+`TWILIO_WEB_*`, el contrato de las seis Twilio Functions web y los bloqueos
+previos a producción están en
+[README-DISPATCH-LIVE-TEST.md](README-DISPATCH-LIVE-TEST.md). El piloto requiere
+una habilitación separada; Mock Mode sigue activo para los demás restaurantes.
+
 ## Twilio Functions necesarias antes de producción
 
 `/manage-delivery-request` **no es compatible con llamadas web** porque depende

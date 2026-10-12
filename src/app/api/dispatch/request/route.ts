@@ -7,8 +7,8 @@ export const runtime = "nodejs";
 export async function POST(request: Request) {
   return handleApi(async () => {
     validateDispatchConfiguration();
-    const body = await readBody(request, ["restaurant", "deliveryCount", "idempotencyKey"]);
-    const restaurant = authenticate(request, body.restaurant);
+    const body = await readBody(request, ["restaurantId", "restaurant", "deliveryCount", "idempotencyKey"]);
+    const restaurant = authenticate(request, body.restaurantId ?? body.restaurant);
     rateLimit(request, `create:${restaurant.slug}`, 5, 60_000);
     if (typeof body.deliveryCount !== "number" || !Number.isInteger(body.deliveryCount) || body.deliveryCount < 1) {
       throw new DispatchError(400, "La cantidad debe ser un entero positivo.");

@@ -1,5 +1,5 @@
 import "server-only";
-import type { AssignmentMode, RestaurantPublic } from "../dispatch-types";
+import type { AssignmentMode, DispatchCapabilities, RestaurantPublic } from "../dispatch-types";
 
 export class DispatchError extends Error {
   constructor(
@@ -24,37 +24,118 @@ export function isDispatchMockMode() {
   return mode === "true";
 }
 
+export type DispatchMode = "mock" | "twilio";
+
+const pilotRestaurantId = "restaurant-test";
+
+export function isLiveTestPilotRequested(restaurantId: string) {
+  return process.env.DISPATCH_LIVE_TEST_ENABLED === "true" && restaurantId === pilotRestaurantId;
+}
+
+export function resolveDispatchMode(restaurantId: string): DispatchMode {
+  if (!isLiveTestPilotRequested(restaurantId) || process.env.DISPATCH_LIVE_TEST_RESTAURANT_ID !== pilotRestaurantId) return "mock";
+  return "twilio";
+}
+
+function validHttpsUrl(value: string | undefined) {
+  if (!value?.trim()) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
+export function getMissingLiveTestRequirements() {
+  const missing: string[] = [];
+  if (process.env.DISPATCH_LIVE_TEST_RESTAURANT_ID !== pilotRestaurantId) {
+    missing.push("DISPATCH_LIVE_TEST_RESTAURANT_ID");
+  }
+  for (const operation of ["config", "create", "status"] as const) {
+    if (!validHttpsUrl(process.env[backendUrlVariables[operation]])) missing.push(backendUrlVariables[operation]);
+  }
+  if (!process.env.TWILIO_WEB_AUTH_USERNAME?.trim()) missing.push("TWILIO_WEB_AUTH_USERNAME");
+  if (!process.env.TWILIO_WEB_AUTH_PASSWORD?.trim()) missing.push("TWILIO_WEB_AUTH_PASSWORD");
+  if (!validHttpsUrl(process.env.MAKE_TIMER_WEBHOOK_URL)) missing.push("MAKE_TIMER_WEBHOOK_URL");
+  if (!process.env.MAKE_TIMER_SECRET?.trim()) missing.push("MAKE_TIMER_SECRET");
+  return missing;
+}
+
+const mockCapabilities: DispatchCapabilities = {
+  liveDispatch: false,
+  canCreate: true,
+  canReadStatus: true,
+  canCancel: true,
+  canResend: true,
+  canLoadHistory: true,
+};
+
+export function getDispatchCapabilities(restaurantId: string): DispatchCapabilities {
+  if (!isLiveTestPilotRequested(restaurantId)) return { ...mockCapabilities };
+
+  const liveDispatch = getMissingLiveTestRequirements().length === 0;
+  const available = (operation: BackendOperation) =>
+    liveDispatch && validHttpsUrl(process.env[backendUrlVariables[operation]]);
+
+  return {
+    liveDispatch,
+    canCreate: available("create"),
+    canReadStatus: available("status"),
+    canCancel: available("cancel"),
+    canResend: available("resend"),
+    canLoadHistory: available("history"),
+  };
+}
+
+export function isLiveTestConfigurationIncomplete(restaurantId = pilotRestaurantId) {
+  return isLiveTestPilotRequested(restaurantId) && !getDispatchCapabilities(restaurantId).liveDispatch;
+}
+
 export type BackendOperation = "create" | "config" | "status" | "cancel" | "resend" | "history";
 
 const backendUrlVariables: Record<BackendOperation, string> = {
-  create: "RECOGIDO_DISPATCH_SUBMIT_URL",
-  config: "RECOGIDO_DISPATCH_CONFIG_URL",
-  status: "RECOGIDO_DISPATCH_STATUS_URL",
-  cancel: "RECOGIDO_DISPATCH_CANCEL_URL",
-  resend: "RECOGIDO_DISPATCH_RESEND_URL",
-  history: "RECOGIDO_DISPATCH_HISTORY_URL",
+  create: "TWILIO_WEB_CREATE_URL",
+  config: "TWILIO_WEB_CONFIG_URL",
+  status: "TWILIO_WEB_STATUS_URL",
+  cancel: "TWILIO_WEB_CANCEL_URL",
+  resend: "TWILIO_WEB_RESEND_URL",
+  history: "TWILIO_WEB_HISTORY_URL",
 };
 
 export function getBackendConfig(operation: BackendOperation) {
   const invalid = () => new DispatchError(503, "La integración central no está configurada correctamente.");
   const missing = () => new DispatchError(503, "La operación aún no está configurada en el servicio central.", "NOT_CONFIGURED");
-  const name = backendUrlVariables[operation];
+  const liveTestEnabled = process.env.DISPATCH_LIVE_TEST_ENABLED === "true";
+  const name = liveTestEnabled ? backendUrlVariables[operation] : ({
+    create: "RECOGIDO_DISPATCH_SUBMIT_URL",
+    config: "RECOGIDO_DISPATCH_CONFIG_URL",
+    status: "RECOGIDO_DISPATCH_STATUS_URL",
+    cancel: "RECOGIDO_DISPATCH_CANCEL_URL",
+    resend: "RECOGIDO_DISPATCH_RESEND_URL",
+    history: "RECOGIDO_DISPATCH_HISTORY_URL",
+  } satisfies Record<BackendOperation, string>)[operation];
   const raw = process.env[name];
   if (!raw?.trim()) throw missing();
   let endpoint: URL;
   try { endpoint = new URL(raw); } catch { throw invalid(); }
   if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw invalid();
-  const webhookRaw = process.env.RECOGIDO_DISPATCH_MAKE_WEBHOOK_URL;
+  const webhookRaw = liveTestEnabled
+    ? process.env.MAKE_TIMER_WEBHOOK_URL
+    : process.env.RECOGIDO_DISPATCH_MAKE_WEBHOOK_URL;
   let makeWebhookUrl: string | undefined;
   if (operation === "create") {
     if (!webhookRaw?.trim()) throw missing();
     let webhook: URL;
     try { webhook = new URL(webhookRaw); } catch { throw invalid(); }
-    if (webhook.protocol !== "https:" || webhook.username || webhook.password || webhook.search || webhook.hash) throw invalid();
+    if (webhook.protocol !== "https:" || webhook.username || webhook.password || webhook.hash) throw invalid();
     makeWebhookUrl = webhook.toString();
   }
-  const secret = process.env.RECOGIDO_DISPATCH_API_SECRET;
-  if (!secret?.trim()) throw missing();
+  const username = liveTestEnabled ? process.env.TWILIO_WEB_AUTH_USERNAME : undefined;
+  const password = liveTestEnabled ? process.env.TWILIO_WEB_AUTH_PASSWORD : undefined;
+  const secret = liveTestEnabled ? undefined : process.env.RECOGIDO_DISPATCH_API_SECRET;
+  const makeTimerSecret = liveTestEnabled ? process.env.MAKE_TIMER_SECRET : undefined;
+  if (liveTestEnabled ? (!username?.trim() || !password?.trim() || !makeTimerSecret?.trim()) : !secret?.trim()) throw missing();
   const rawTimeout = process.env.DISPATCH_REQUEST_TIMEOUT_MS ?? "10000";
   if (!/^\d+$/.test(rawTimeout)) throw invalid();
   const timeoutMs = Number(rawTimeout);
@@ -62,9 +143,23 @@ export function getBackendConfig(operation: BackendOperation) {
   return {
     url: endpoint.toString(),
     ...(makeWebhookUrl ? { makeWebhookUrl } : {}),
-    secret,
+    ...(secret ? { secret } : {}),
+    ...(username && password ? { authorization: `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}` } : {}),
+    ...(username ? { username } : {}),
+    ...(password ? { password } : {}),
+    ...(makeTimerSecret ? { makeTimerSecret } : {}),
+    liveTestEnabled,
     timeoutMs,
   };
+}
+
+export function requireDispatchCapability(restaurantId: string, capability: keyof Omit<DispatchCapabilities, "liveDispatch">) {
+  if (getDispatchCapabilities(restaurantId)[capability]) return;
+  throw new DispatchError(
+    503,
+    "This feature is not configured for the live pilot",
+    "FEATURE_NOT_CONFIGURED",
+  );
 }
 
 export function validateDispatchConfiguration() {

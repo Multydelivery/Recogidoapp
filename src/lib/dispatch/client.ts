@@ -1,7 +1,7 @@
 import { dispatchStatusLabels, type DispatchRequest, type DispatchSnapshot, type RestaurantPublic } from "./dispatch-types";
 
 export class DispatchApiError extends Error {
-  constructor(public readonly statusCode: number, message: string) {
+  constructor(public readonly statusCode: number, message: string, public readonly code?: string) {
     super(message);
   }
 }
@@ -44,7 +44,32 @@ function isSnapshot(value: unknown): value is DispatchSnapshot {
     "mockMode" in value && typeof value.mockMode === "boolean" &&
     "restaurant" in value && isRestaurant(value.restaurant) &&
     "request" in value && (value.request === null || isRequest(value.request)) &&
-    "history" in value && Array.isArray(value.history) && value.history.length <= 5 && value.history.every(isRequest);
+    "history" in value && Array.isArray(value.history) && value.history.length <= 5 && value.history.every(isRequest) &&
+    (!("operationStatus" in value) || value.operationStatus === "created_with_timer_error");
+}
+
+function combineSignalWithTimeout(signal?: AbortSignal, timeoutMs = 15_000): { signal: AbortSignal; cleanup: () => void } {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new Error("Timeout de solicitud"));
+  }, timeoutMs);
+
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timer);
+      controller.abort(signal.reason);
+    } else {
+      signal.addEventListener("abort", () => {
+        clearTimeout(timer);
+        controller.abort(signal.reason);
+      }, { once: true });
+    }
+  }
+
+  return {
+    signal: controller.signal,
+    cleanup: () => clearTimeout(timer),
+  };
 }
 
 export async function dispatchApi(
@@ -54,23 +79,49 @@ export async function dispatchApi(
   signal: AbortSignal,
   body?: Record<string, string | number>,
 ) {
-  const response = await fetch(
-    path === "status" || path === "config" || path === "recent"
-      ? `/api/dispatch/${path}?restaurant=${encodeURIComponent(restaurant)}`
-      : `/api/dispatch/${path}`,
-    {
-      method: path === "status" || path === "config" || path === "recent" ? "GET" : "POST",
-      headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) },
-      body: body ? JSON.stringify({ restaurant, ...body }) : undefined,
-      cache: "no-store",
-      signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]),
-    },
-  );
-  const data: unknown = await response.json();
+  const isRead = path === "status" || path === "config" || path === "recent";
+  const url = path === "config"
+    ? `/api/dispatch/restaurants/${encodeURIComponent(restaurant)}/config`
+    : path === "status" && typeof body?.requestId === "string"
+      ? `/api/dispatch/requests/${encodeURIComponent(body.requestId)}?restaurantId=${encodeURIComponent(restaurant)}`
+      : isRead
+        ? `/api/dispatch/${path}?restaurant=${encodeURIComponent(restaurant)}`
+        : `/api/dispatch/${path}`;
+  const timeoutGuard = combineSignalWithTimeout(signal, 15_000);
+  let response: Response;
+  try {
+    const bearer = "Bearer " + token;
+    response = await fetch(
+      url,
+      {
+        method: isRead ? "GET" : "POST",
+        headers: {
+          "X-Device-Token": token,
+          Authorization: bearer,
+          ...(!isRead && body ? { "Content-Type": "application/json" } : {}),
+        },
+        body: !isRead && body ? JSON.stringify(path === "request"
+          ? { restaurantId: restaurant, ...body }
+          : { restaurant, ...body }) : undefined,
+        cache: "no-store",
+        signal: timeoutGuard.signal,
+      },
+    );
+  } finally {
+    timeoutGuard.cleanup();
+  }
+
+  let data: unknown;
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
+  }
   if (!response.ok) {
     const message = data && typeof data === "object" && "error" in data && typeof data.error === "string"
       ? data.error : "El servidor no pudo completar la solicitud.";
-    throw new DispatchApiError(response.status, message);
+    const code = data && typeof data === "object" && "code" in data && typeof data.code === "string" ? data.code : undefined;
+    throw new DispatchApiError(response.status, message, code);
   }
   if (!isSnapshot(data) || data.restaurant.slug !== restaurant) {
     throw new Error("La respuesta del servidor no tiene el formato esperado.");

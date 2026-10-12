@@ -10,6 +10,7 @@ export async function POST(request: Request) {
     const body = await readBody(request, ["restaurant", "requestId"]);
     const restaurant = authenticate(request, body.restaurant);
     rateLimit(request, `resend:${restaurant.slug}`, 10, 60_000);
-    return json(await resendDispatch(restaurant, readRequestId(body.requestId)));
+    const result = await resendDispatch(restaurant, readRequestId(body.requestId));
+    return json(result, result.operationStatus ? 202 : 200);
   });
 }

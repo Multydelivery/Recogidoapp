@@ -7,6 +7,7 @@ interface DeliveryKeypadProps {
   maxActiveDeliveriesPerDriver: number;
   assignmentMode: AssignmentMode;
   isSubmitting: boolean;
+  isDisabled?: boolean;
   onSelect: (count: number) => void;
   onSubmit: () => void;
 }
@@ -17,6 +18,7 @@ export function DeliveryKeypad({
   maxActiveDeliveriesPerDriver,
   assignmentMode,
   isSubmitting,
+  isDisabled = false,
   onSelect,
   onSubmit,
 }: DeliveryKeypadProps) {
@@ -37,7 +39,7 @@ export function DeliveryKeypad({
         {" "}máximo {maxActiveDeliveriesPerDriver} {maxActiveDeliveriesPerDriver === 1 ? "entrega activa" : "entregas activas"} por conductor
       </p>
 
-      <fieldset disabled={isSubmitting} className={styles.keypadFieldset}>
+      <fieldset disabled={isSubmitting || isDisabled} className={styles.keypadFieldset}>
         <legend className="sr-only">Cantidad de entregas</legend>
         <div className={styles.keypad}>
           {Array.from({ length: maxDeliveries }, (_, index) => index + 1).map((count) => (
@@ -63,7 +65,7 @@ export function DeliveryKeypad({
       <button
         type="button"
         className={styles.sendButton}
-        disabled={deliveryCount === null || isSubmitting}
+        disabled={deliveryCount === null || isSubmitting || isDisabled}
         onClick={onSubmit}
       >
         {isSubmitting && <span className={styles.spinner} aria-hidden="true" />}

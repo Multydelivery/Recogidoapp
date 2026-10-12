@@ -1,15 +1,18 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import type {
   AssignmentMode,
   DispatchRequest,
   DispatchStatus,
   RestaurantPublic,
 } from "./dispatch-types";
-import { DispatchError, getBackendConfig, isDispatchMockMode, type BackendOperation } from "./server/config";
+import { DispatchError, getBackendConfig, resolveDispatchMode, type BackendOperation } from "./server/config";
 
-export type BackendErrorCode = "not_configured" | "timeout" | "network" | "http" | "invalid_response" | "rejected";
+export type BackendErrorCode = "not_configured" | "timeout" | "network" | "http" | "invalid_response" | "rejected" | "timer_error";
 
 export class RecogidoApiError extends DispatchError {
+  public createdRequest?: DispatchRequest;
+
   constructor(
     public readonly code: BackendErrorCode,
     public readonly requestId: string | undefined,
@@ -17,8 +20,15 @@ export class RecogidoApiError extends DispatchError {
     message: string,
     public readonly retryable: boolean,
   ) {
-    super(statusCode, message, code === "not_configured" ? "NOT_CONFIGURED" : "CENTRAL_API_ERROR");
+    super(statusCode, message, code === "not_configured" ? "NOT_CONFIGURED" :
+      code === "timer_error" ? "CREATED_WITH_TIMER_ERROR" : "CENTRAL_API_ERROR");
   }
+
+}
+
+export function stableLiveTestRequestId(restaurantId: string, idempotencyKey: string) {
+  const digest = createHash("sha256").update(`${restaurantId}:${idempotencyKey}`).digest("hex").slice(0, 32);
+  return `WEB_${digest}`;
 }
 
 interface Identity {
@@ -73,6 +83,19 @@ function requestPayload(value: unknown, identity: Identity): Record<string, unkn
   }
   if ("request" in value && value.request === null && !identity.requestId) return null;
   const payload = isRecord(value.request) ? value.request : value;
+  if (payload.requestedDeliveries !== undefined && payload.deliveryCount === undefined) {
+    payload.deliveryCount = payload.requestedDeliveries;
+  }
+  if (Array.isArray(payload.children) && payload.deliveries === undefined) {
+    payload.deliveries = payload.children.map((child) => {
+      if (!isRecord(child)) return child;
+      return {
+        ...child,
+        driverName: child.winnerName,
+        assignedAt: child.claimedAt,
+      };
+    });
+  }
   if (identity.requestId && payload.requestId !== identity.requestId) {
     throw new RecogidoApiError("invalid_response", identity.requestId, 502, "Respuesta inválida del servicio central.", false);
   }
@@ -91,7 +114,8 @@ function normalizeRequest(
   const requestId = payload.requestId;
   const deliveryCount = boundedInteger(payload.deliveryCount, 1, configuration.maxDeliveries);
   const createdAt = safeText(payload.createdAt, 40) ?? (initialCreateResponse ? new Date().toISOString() : undefined);
-  const status = payload.status ?? (initialCreateResponse ? "open" : undefined);
+  const statusValue = payload.status === "partially_assigned" ? "partially_claimed" : payload.status;
+  const status = statusValue ?? (initialCreateResponse ? "open" : undefined);
   if (typeof requestId !== "string" || !rootIdPattern.test(requestId) ||
     (identity.requestId && requestId !== identity.requestId) ||
     typeof status !== "string" || !statusValues.includes(status as DispatchStatus) ||
@@ -145,7 +169,7 @@ function normalizeRequest(
   const assignedFromItems = deliveries.filter((delivery) => delivery.status === "claimed" || delivery.status === "closed").length;
   const assignedDeliveries = boundedInteger(payload.assignedDeliveries, 0, deliveryCount) ??
     (requestType === "batch" && ["claimed", "fully_assigned"].includes(String(status)) ? deliveryCount : assignedFromItems);
-  const remainingDeliveries = boundedInteger(payload.remainingDeliveries, 0, deliveryCount) ??
+  const remainingDeliveries = boundedInteger(payload.pendingDeliveries ?? payload.remainingDeliveries, 0, deliveryCount) ??
     (requestType === "batch" ? (assignedDeliveries === deliveryCount ? 0 : deliveryCount) :
       deliveries.filter((delivery) => delivery.status === "open").length);
   const totalDeliveries = boundedInteger(payload.totalDeliveries, 1, configuration.maxDeliveries) ?? deliveryCount;
@@ -205,7 +229,10 @@ async function centralRequest(
 ): Promise<unknown> {
   let config: ReturnType<typeof getBackendConfig>;
   try {
-    if (isDispatchMockMode()) throw new DispatchError(503, "El modo de integración no está disponible.");
+    const legacyDirectAdapterTest = process.env.DISPATCH_LIVE_TEST_ENABLED !== "true" && process.env.DISPATCH_MOCK_MODE === "false";
+    if (resolveDispatchMode(identity.restaurantId) !== "twilio" && !legacyDirectAdapterTest) {
+      throw new DispatchError(503, "El modo de integración no está disponible.");
+    }
     config = getBackendConfig(operation);
   } catch (error: unknown) {
     const notConfigured = error instanceof DispatchError && error.code === "NOT_CONFIGURED";
@@ -224,8 +251,11 @@ async function centralRequest(
   try {
     const response = await fetch(config.url, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ ...fields, secret: config.secret }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        ...(config.authorization ? { Authorization: config.authorization } : {}),
+      },
+      body: new URLSearchParams({ ...fields, ...(config.secret ? { secret: config.secret } : {}) }),
       signal: controller.signal,
       redirect: "error",
       cache: "no-store",
@@ -241,7 +271,14 @@ async function centralRequest(
     }
     try {
       const data: unknown = await response.json();
-      if (containsSensitiveValue(data, [config.secret, config.url, config.makeWebhookUrl ?? ""])) {
+      if (containsSensitiveValue(data, [
+        config.secret ?? "",
+        config.url,
+        config.makeWebhookUrl ?? "",
+        config.authorization ?? "",
+        config.username ?? "",
+        config.password ?? "",
+      ])) {
         throw new RecogidoApiError("invalid_response", identity.requestId, 502, "Respuesta inválida del servicio central.", false);
       }
       console.info("Dispatch central", {
@@ -273,13 +310,86 @@ async function centralRequest(
   }
 }
 
+async function startMakeTimer(input: {
+  restaurantId: string;
+  restaurantPhone: string;
+  deliveryCount: number;
+}, request: DispatchRequest, generation: string): Promise<void> {
+  const config = getBackendConfig("create");
+  if (!config.makeWebhookUrl || !config.makeTimerSecret) {
+    throw new RecogidoApiError("not_configured", request.requestId, 503, "El temporizador de Make todavía no está configurado.", false);
+  }
+  const timerKey = `${request.requestId}:${generation}`;
+  const startedTimers = globalThis.recogidoMakeTimersStarted ??= new Set<string>();
+  if (startedTimers.has(timerKey)) return;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  const startedAt = Date.now();
+  try {
+    const response = await fetch(config.makeWebhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": timerKey },
+      body: new URLSearchParams({
+        requestId: request.requestId,
+        restaurantId: input.restaurantId,
+        restaurantPhone: input.restaurantPhone,
+        deliveryCount: String(input.deliveryCount),
+        timerGeneration: generation,
+        secret: config.makeTimerSecret,
+      }),
+      signal: controller.signal,
+      redirect: "error",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new RecogidoApiError("http", request.requestId, 502, "No se pudo iniciar el temporizador de despacho.", response.status >= 500 || response.status === 429);
+    }
+    startedTimers.add(timerKey);
+    console.info("Dispatch central", {
+      operation: "make_timer",
+      requestId: request.requestId,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+    });
+  } catch (error: unknown) {
+    const timerFailure = error instanceof RecogidoApiError ? error :
+      controller.signal.aborted
+        ? new RecogidoApiError("timeout", request.requestId, 504, "El temporizador de despacho tardó demasiado en iniciar.", true)
+        : new RecogidoApiError("network", request.requestId, 502, "No se pudo iniciar el temporizador de despacho.", true);
+    const safeError = new RecogidoApiError(
+      "timer_error",
+      request.requestId,
+      202,
+      "Solicitud creada en Twilio, pero no se pudo confirmar el temporizador de alertas.",
+      timerFailure.retryable,
+    );
+    safeError.createdRequest = request;
+    console.warn("Dispatch central", {
+      operation: "make_timer",
+      requestId: request.requestId,
+      code: safeError.code,
+      statusCode: safeError.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+    throw safeError;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function getRestaurantConfiguration(input: {
   restaurantId: string;
   fallback: RestaurantPublic;
 }): Promise<RestaurantPublic> {
-  if (isDispatchMockMode()) return { ...input.fallback };
+  if (resolveDispatchMode(input.restaurantId) !== "twilio") return { ...input.fallback };
   const value = await centralRequest("config", { restaurantId: input.restaurantId }, { restaurantId: input.restaurantId });
-  return normalizeConfiguration(value, input.restaurantId);
+  const configuration = normalizeConfiguration(value, input.restaurantId);
+  if (input.restaurantId === "restaurant-test" &&
+    (configuration.maxDeliveries !== 3 || configuration.assignmentMode !== "individual" ||
+      configuration.maxActiveDeliveriesPerDriver !== 1 || configuration.active === false || configuration.deliveryEnabled === false)) {
+    throw new RecogidoApiError("invalid_response", undefined, 503, "La configuración de prueba no coincide con el perfil autorizado.", false);
+  }
+  return configuration;
 }
 
 export async function createDeliveryRequest(input: CreateDeliveryRequestInput): Promise<DispatchRequest> {
@@ -293,53 +403,7 @@ export async function createDeliveryRequest(input: CreateDeliveryRequestInput): 
   });
   const request = normalizeRequest(value, { restaurantId: input.restaurantId }, input.configuration, true);
   if (!request) throw new RecogidoApiError("invalid_response", input.requestId, 502, "Respuesta inválida del servicio central.", false);
-
-  let config: ReturnType<typeof getBackendConfig>;
-  try {
-    config = getBackendConfig("create");
-  } catch {
-    throw new RecogidoApiError("not_configured", request.requestId, 503, "El temporizador de Make todavía no está configurado.", false);
-  }
-  if (!config.makeWebhookUrl) {
-    throw new RecogidoApiError("not_configured", request.requestId, 503, "El temporizador de Make todavía no está configurado.", false);
-  }
-  const startedTimers = globalThis.recogidoMakeTimersStarted ??= new Set<string>();
-  if (startedTimers.has(request.requestId)) return request;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
-  const startedAt = Date.now();
-  try {
-    const response = await fetch(config.makeWebhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Idempotency-Key": request.requestId },
-      body: new URLSearchParams({
-        requestId: request.requestId,
-        restaurantId: input.restaurantId,
-        deliveryCount: String(input.deliveryCount),
-      }),
-      signal: controller.signal,
-      redirect: "error",
-      cache: "no-store",
-    });
-    if (!response.ok) throw new RecogidoApiError("http", request.requestId, 502, "No se pudo iniciar el temporizador de despacho.", response.status >= 500 || response.status === 429);
-    startedTimers.add(request.requestId);
-    console.info("Dispatch central", { operation: "make_timer", requestId: request.requestId, statusCode: response.status, durationMs: Date.now() - startedAt });
-  } catch (error: unknown) {
-    const safeError = error instanceof RecogidoApiError ? error :
-      controller.signal.aborted
-        ? new RecogidoApiError("timeout", request.requestId, 504, "El temporizador de despacho tardó demasiado en iniciar.", true)
-        : new RecogidoApiError("network", request.requestId, 502, "No se pudo iniciar el temporizador de despacho.", true);
-    console.warn("Dispatch central", {
-      operation: "make_timer",
-      requestId: request.requestId,
-      code: safeError.code,
-      statusCode: safeError.statusCode,
-      durationMs: Date.now() - startedAt,
-    });
-    throw safeError;
-  } finally {
-    clearTimeout(timeout);
-  }
+  await startMakeTimer(input, request, "initial");
   return request;
 }
 
@@ -362,6 +426,7 @@ export async function resendDeliveryRequest(input: Identity & {
   requestId: string;
   configuration: RestaurantPublic;
   openRequestIds: string[];
+  restaurantPhone: string;
 }): Promise<DispatchRequest> {
   const value = await centralRequest("resend", input, {
     restaurantId: input.restaurantId,
@@ -370,6 +435,11 @@ export async function resendDeliveryRequest(input: Identity & {
   });
   const request = normalizeRequest(value, input, input.configuration);
   if (!request) throw new RecogidoApiError("invalid_response", input.requestId, 502, "Respuesta inválida del servicio central.", false);
+  await startMakeTimer({
+    restaurantId: input.restaurantId,
+    restaurantPhone: input.restaurantPhone,
+    deliveryCount: request.deliveryCount,
+  }, request, `resend:${request.updatedAt ?? request.createdAt}`);
   return request;
 }
 
