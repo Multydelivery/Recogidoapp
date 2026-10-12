@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { DispatchApiError, dispatchApi } from "@/lib/dispatch/client";
-import { dispatchStatusLabels, isOpenRequest, type DispatchRequest, type DispatchSnapshot, type RestaurantPublic } from "@/lib/dispatch/dispatch-types";
+import {
+  dispatchStatusLabels,
+  isOpenRequest,
+  type DispatchRequest,
+  type DispatchSnapshot,
+  type RestaurantPublic,
+} from "@/lib/dispatch/dispatch-types";
 import { DispatchFrame } from "./DispatchFrame";
 import { DeliveryKeypad } from "./DeliveryKeypad";
 import { DeliveryStatus } from "./DeliveryStatus";
@@ -10,19 +16,20 @@ import { DeliveryHistory } from "./DeliveryHistory";
 import styles from "./DispatchDemo.module.css";
 
 export function DispatchTerminal({ restaurant, initialMockMode = true }: {
-  restaurant: RestaurantPublic;
+  restaurant: Pick<RestaurantPublic, "slug" | "name">;
   initialMockMode?: boolean;
 }) {
   const [token, setToken] = useState<string | null>(null);
   const [pin, setPin] = useState("");
   const [initializing, setInitializing] = useState(true);
   const [authenticating, setAuthenticating] = useState(false);
+  const [configuration, setConfiguration] = useState<RestaurantPublic | null>(null);
   const [request, setRequest] = useState<DispatchRequest | null>(null);
   const [history, setHistory] = useState<DispatchRequest[]>([]);
   const [deliveryCount, setDeliveryCount] = useState<number | null>(null);
-  const [showMore, setShowMore] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [connected, setConnected] = useState(false);
   const [mockMode, setMockMode] = useState(initialMockMode);
   const [connectionFailed, setConnectionFailed] = useState(false);
@@ -42,10 +49,11 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
 
   const applySnapshot = useCallback((data: DispatchSnapshot) => {
     setMockMode(data.mockMode);
+    setConfiguration(data.restaurant);
     setConnectionFailed(false);
     setHistory((previous) => data.mockMode ? data.history :
       [...data.history, ...previous.filter((item) => !data.history.some((next) => next.requestId === item.requestId))]
-        .filter((item) => new Date(item.createdAt).toDateString() === new Date().toDateString()).slice(0, 5));
+        .slice(0, 5));
     if (data.request?.requestId !== dismissedId.current || (data.request && isOpenRequest(data.request.status))) {
       setRequest(data.request);
     }
@@ -60,9 +68,10 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
     if (!mounted.current || controller.current?.signal.aborted) return;
     setConnected(false);
     setConnectionFailed(true);
-    setMessage(error instanceof DispatchApiError ? error.message : "No se pudo contactar o verificar el servidor. Reintenta; no se confirmó la operación.");
+    setMessage(`Error de conexión: ${error instanceof DispatchApiError ? error.message : "No se pudo contactar o verificar el servidor. Reintenta; no se confirmó la operación."}`);
     if (error instanceof DispatchApiError && error.statusCode === 401) {
       setToken(null);
+      setConfiguration(null);
       try { localStorage.removeItem(storageKey); } catch { storageFailure(); }
     }
   }, [storageKey, storageFailure]);
@@ -77,9 +86,11 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
       try { saved = localStorage.getItem(storageKey); } catch { storageFailure(); }
       if (saved) {
         try {
+          await dispatchApi("config", restaurant.slug, saved, abort.signal);
+          const recent = await dispatchApi("recent", restaurant.slug, saved, abort.signal);
           const data = await dispatchApi("status", restaurant.slug, saved, abort.signal);
           if (!abort.signal.aborted) {
-            applySnapshot(data);
+            applySnapshot({ ...data, history: recent.history });
             setToken(saved);
           }
         } catch (error: unknown) {
@@ -133,9 +144,11 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
     setMessage(null);
     const candidate = pin.trim();
     try {
+      await dispatchApi("config", restaurant.slug, candidate, controller.current.signal);
+      const recent = await dispatchApi("recent", restaurant.slug, candidate, controller.current.signal);
       const data = await dispatchApi("status", restaurant.slug, candidate, controller.current.signal);
       if (!mounted.current) return;
-      applySnapshot(data);
+      applySnapshot({ ...data, history: recent.history });
       setToken(candidate);
       setPin("");
       try { localStorage.setItem(storageKey, candidate); } catch { storageFailure(); }
@@ -148,7 +161,7 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
   }
 
   async function submit() {
-    if (busy.current || !token || deliveryCount === null || request || !controller.current) return;
+    if (busy.current || !token || !configuration || deliveryCount === null || request || !controller.current) return;
     revision.current++;
     busy.current = true;
     setIsSubmitting(true);
@@ -177,7 +190,7 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
 
   async function cancel() {
     if (busy.current || !token || !request || !isOpenRequest(request.status) || !controller.current) return;
-    if (!window.confirm(`¿Cancelar la solicitud de ${request.deliveryCount} entregas?`)) return;
+    if (!window.confirm(`¿Cancelar las ${request.remainingDeliveries} entregas que siguen abiertas? Las ya asignadas se conservarán.`)) return;
     revision.current++;
     busy.current = true;
     setIsCancelling(true);
@@ -193,19 +206,37 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
     }
   }
 
+  async function resend() {
+    if (busy.current || !token || !request || !isOpenRequest(request.status) || request.remainingDeliveries === 0 || !controller.current) return;
+    revision.current++;
+    busy.current = true;
+    setIsResending(true);
+    setMessage(null);
+    try {
+      const data = await dispatchApi("resend", restaurant.slug, token, controller.current.signal, { requestId: request.requestId });
+      if (mounted.current) applySnapshot(data);
+    } catch (error: unknown) {
+      handleFailure(error);
+    } finally {
+      busy.current = false;
+      if (mounted.current) setIsResending(false);
+    }
+  }
+
   function reset() {
     if (!request || isOpenRequest(request.status)) return;
     revision.current++;
     dismissedId.current = request.requestId;
     setRequest(null);
     setDeliveryCount(null);
-    setShowMore(false);
     setMessage(null);
     attempt.current = null;
   }
 
+  const canManageOpenDeliveries = !!request && isOpenRequest(request.status) && request.remainingDeliveries > 0;
+  const isMutating = isSubmitting || isCancelling || isResending;
   return (
-    <DispatchFrame restaurantName={restaurant.name} now={now} connected={connected} mockMode={mockMode} connectionFailed={connectionFailed}>
+    <DispatchFrame restaurantName={configuration?.name ?? restaurant.name} now={now} connected={connected} mockMode={mockMode} connectionFailed={connectionFailed}>
       <div className={styles.workspace}>
         <section className={styles.orderCard} aria-label="Solicitud de entregas">
           <div className={styles.cardContent}>
@@ -221,28 +252,37 @@ export function DispatchTerminal({ restaurant, initialMockMode = true }: {
                 </button>
                 <p className={styles.cancelHint}>Solo en un dispositivo de confianza. El PIN se guarda localmente tras validarlo.</p>
               </form>
+            ) : request ? (
+              <DeliveryStatus request={request} headingRef={heading} now={now} />
+            ) : configuration ? (
+              <div ref={keypad}>
+                <DeliveryKeypad
+                  deliveryCount={deliveryCount}
+                  maxDeliveries={configuration.maxDeliveries}
+                  maxActiveDeliveriesPerDriver={configuration.maxActiveDeliveriesPerDriver}
+                  assignmentMode={configuration.assignmentMode}
+                  isSubmitting={isSubmitting}
+                  onSelect={setDeliveryCount}
+                  onSubmit={() => void submit()}
+                />
+              </div>
             ) : (
+              <p role="status">Cargando configuración del restaurante…</p>
+            )}
+            {request && !isOpenRequest(request.status) && (
+              <button className={styles.sendButton} type="button" onClick={reset}>NUEVA SOLICITUD</button>
+            )}
+            {request && canManageOpenDeliveries && (
               <>
-                {request ? (
-                  <DeliveryStatus headingRef={heading} stage={request.status} request={{
-                    ...request,
-                    status: request.status === "claimed" ? "assigned" : request.status === "cancelled" ? "cancelled" : request.status === "error" ? "error" : "searching",
-                  }} />
-                ) : (
-                  <div ref={keypad}>
-                    <DeliveryKeypad deliveryCount={deliveryCount} showMore={showMore} isSubmitting={isSubmitting}
-                      onSelect={setDeliveryCount} onShowMore={() => setShowMore(true)} onSubmit={() => void submit()} />
-                  </div>
-                )}
-                {request && !isOpenRequest(request.status) && (
-                  <button className={styles.sendButton} type="button" onClick={reset}>NUEVA SOLICITUD</button>
-                )}
-                <button className={styles.cancelButton} type="button" disabled={!request || !isOpenRequest(request.status) || isCancelling || isSubmitting} onClick={() => void cancel()}>
-                  {isCancelling ? "CANCELANDO…" : "CANCELAR ÚLTIMA"}
+                <button className={styles.sendButton} type="button" disabled={isMutating} onClick={() => void resend()}>
+                  {isResending ? "REOFERTANDO…" : "VOLVER A OFRECER PENDIENTES"}
                 </button>
-                <p className={styles.cancelHint}>Solo se puede cancelar antes de asignar conductor. Estado consultado cada 5 segundos.</p>
+                <button className={styles.cancelButton} type="button" disabled={isMutating} onClick={() => void cancel()}>
+                  {isCancelling ? "CANCELANDO…" : "CANCELAR ENTREGAS PENDIENTES"}
+                </button>
               </>
             )}
+            {request && <p className={styles.cancelHint}>Las operaciones se aplican solo a las entregas abiertas. Estado actualizado cada 5 segundos.</p>}
             {message && <p className={styles.errorNotice} role="alert">{message}</p>}
             {storageNotice && <p className={styles.soundNotice} role="status">{storageNotice}</p>}
           </div>

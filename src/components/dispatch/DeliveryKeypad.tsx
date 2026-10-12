@@ -1,32 +1,46 @@
+import type { AssignmentMode } from "@/lib/dispatch/dispatch-types";
 import styles from "./DispatchDemo.module.css";
 
 interface DeliveryKeypadProps {
   deliveryCount: number | null;
-  showMore: boolean;
+  maxDeliveries: number;
+  maxActiveDeliveriesPerDriver: number;
+  assignmentMode: AssignmentMode;
   isSubmitting: boolean;
   onSelect: (count: number) => void;
-  onShowMore: () => void;
   onSubmit: () => void;
 }
 
 export function DeliveryKeypad({
   deliveryCount,
-  showMore,
+  maxDeliveries,
+  maxActiveDeliveriesPerDriver,
+  assignmentMode,
   isSubmitting,
   onSelect,
-  onShowMore,
   onSubmit,
 }: DeliveryKeypadProps) {
+  const isIndividual = assignmentMode === "individual";
+
   return (
     <div aria-busy={isSubmitting}>
-      <p className={styles.eyebrow}>NUEVA ENTREGA</p>
+      <p className={styles.eyebrow}>NUEVA SOLICITUD</p>
       <h1 className={styles.title}>¿Cuántas entregas necesitas?</h1>
-      <p className={styles.subtitle}>Selecciona la cantidad y envía tu solicitud.</p>
+      <p className={styles.assignmentMode}>{isIndividual ? "Asignación individual" : "Asignación por lote"}</p>
+      <p className={styles.subtitle}>
+        {isIndividual
+          ? "Cada entrega se ofrece por separado y puede asignarse a un conductor distinto."
+          : "Un solo conductor acepta el lote completo de entregas."}
+      </p>
+      <p className={styles.limitNote}>
+        Máximo {maxDeliveries} {maxDeliveries === 1 ? "entrega" : "entregas"} por solicitud ·
+        {" "}máximo {maxActiveDeliveriesPerDriver} {maxActiveDeliveriesPerDriver === 1 ? "entrega activa" : "entregas activas"} por conductor
+      </p>
 
       <fieldset disabled={isSubmitting} className={styles.keypadFieldset}>
         <legend className="sr-only">Cantidad de entregas</legend>
         <div className={styles.keypad}>
-          {[1, 2, 3].map((count) => (
+          {Array.from({ length: maxDeliveries }, (_, index) => index + 1).map((count) => (
             <button
               key={count}
               type="button"
@@ -38,40 +52,12 @@ export function DeliveryKeypad({
               <span>{count === 1 ? "ENTREGA" : "ENTREGAS"}</span>
             </button>
           ))}
-          <button
-            type="button"
-            className={styles.quantity}
-            aria-label="Elegir entre 4 y 9 entregas"
-            aria-expanded={showMore}
-            aria-controls="more-deliveries"
-            aria-pressed={deliveryCount !== null && deliveryCount >= 4}
-            onClick={onShowMore}
-          >
-            <span className={styles.quantityNumber}>4+</span>
-            <span>ENTREGAS</span>
-          </button>
         </div>
-        {showMore && (
-          <div id="more-deliveries" className={styles.moreQuantities} role="group" aria-label="De 4 a 9 entregas">
-            {[4, 5, 6, 7, 8, 9].map((count) => (
-              <button
-                key={count}
-                type="button"
-                className={styles.moreQuantity}
-                aria-label={`${count} entregas`}
-                aria-pressed={deliveryCount === count}
-                onClick={() => onSelect(count)}
-              >
-                {count}
-              </button>
-            ))}
-          </div>
-        )}
       </fieldset>
 
       <p className={styles.selection} role="status">
         {deliveryCount === null
-          ? "Selecciona una cantidad para continuar"
+          ? `Selecciona de 1 a ${maxDeliveries} entregas`
           : `${deliveryCount} ${deliveryCount === 1 ? "entrega seleccionada" : "entregas seleccionadas"}`}
       </p>
       <button
@@ -81,7 +67,7 @@ export function DeliveryKeypad({
         onClick={onSubmit}
       >
         {isSubmitting && <span className={styles.spinner} aria-hidden="true" />}
-        {isSubmitting ? "ENVIANDO SOLICITUD…" : "ENVIAR SOLICITUD"}
+        {isSubmitting ? "CREANDO SOLICITUD…" : "ENVIAR SOLICITUD"}
       </button>
     </div>
   );

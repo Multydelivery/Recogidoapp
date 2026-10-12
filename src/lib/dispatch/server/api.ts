@@ -2,6 +2,37 @@ import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { DispatchError, getRestaurants } from "./config";
 
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+
+declare global {
+  var recogidoDispatchRateLimits: Map<string, RateLimitBucket> | undefined;
+}
+
+export function rateLimit(request: Request, key: string, limit: number, windowMs: number) {
+  const buckets = globalThis.recogidoDispatchRateLimits ??= new Map();
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const clientHash = createHash("sha256").update(forwarded).digest("hex").slice(0, 16);
+  const bucketKey = `${key}:${clientHash}`;
+  const now = Date.now();
+  const bucket = buckets.get(bucketKey);
+  if (!bucket || bucket.resetAt <= now) {
+    buckets.set(bucketKey, { count: 1, resetAt: now + windowMs });
+  } else {
+    bucket.count += 1;
+    if (bucket.count > limit) {
+      throw new DispatchError(429, "Demasiadas solicitudes. Espera un momento y vuelve a intentar.", "RATE_LIMITED");
+    }
+  }
+  if (buckets.size > 5000) {
+    for (const [entryKey, entry] of buckets) {
+      if (entry.resetAt <= now) buckets.delete(entryKey);
+    }
+  }
+}
+
 export function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "Cache-Control": "no-store" } });
 }
@@ -12,7 +43,7 @@ export async function handleApi(action: () => Response | Promise<Response>) {
   } catch (error: unknown) {
     if (error instanceof DispatchError) {
       if (error.statusCode >= 500) console.error("Dispatch configuration or capacity error:", error.message);
-      return json({ error: error.message }, error.statusCode);
+      return json({ code: error.code.toUpperCase(), error: error.message }, error.statusCode);
     }
     console.error("Unexpected dispatch error:", error instanceof Error ? error.name : "Unknown");
     return json({ error: "Error interno de Dispatch. Intenta nuevamente." }, 500);
@@ -29,7 +60,8 @@ export function authenticate(request: Request, slug: unknown) {
   const token = header?.startsWith("Bearer ") ? header.slice(7) : "";
   const hash = (value: string) => createHash("sha256").update(value).digest();
   const matches = timingSafeEqual(hash(token.slice(0, 129)), hash(restaurant?.deviceToken ?? ""));
-  if (!restaurant || !token || token.length > 128 || !matches) {
+  if (!restaurant || !token || token.length > 128 || !matches || !restaurant.active) {
+    rateLimit(request, `auth:${slug}`, 10, 15 * 60 * 1000);
     throw new DispatchError(401, "Token o PIN inválido para este restaurante.");
   }
   return restaurant;
@@ -55,7 +87,7 @@ export async function readBody(request: Request, allowedKeys: string[]): Promise
 }
 
 export function readRequestId(value: unknown) {
-  if (typeof value !== "string" || !/^WEB_\d{13}_[a-f0-9]{16}$/.test(value)) {
+  if (typeof value !== "string" || !/^WEB_[a-f0-9]{32}$/.test(value)) {
     throw new DispatchError(400, "Request ID inválido.");
   }
   return value;

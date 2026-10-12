@@ -1,211 +1,248 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type DemoRequest, type DemoStatus } from "@/lib/dispatch/demo-types";
+import type { DispatchRequest, RestaurantPublic } from "@/lib/dispatch/dispatch-types";
+import { isOpenRequest } from "@/lib/dispatch/dispatch-types";
 import { DispatchFrame } from "./DispatchFrame";
 import { DeliveryKeypad } from "./DeliveryKeypad";
 import { DeliveryStatus } from "./DeliveryStatus";
 import { DeliveryHistory } from "./DeliveryHistory";
 import styles from "./DispatchDemo.module.css";
 
+const scenarios: RestaurantPublic[] = [
+  {
+    slug: "la-fonda-demo",
+    name: "La Fonda Demo",
+    active: true,
+    deliveryEnabled: true,
+    maxDeliveries: 3,
+    assignmentMode: "individual",
+    maxActiveDeliveriesPerDriver: 1,
+  },
+  {
+    slug: "brisas-demo",
+    name: "Brisas Demo",
+    active: true,
+    deliveryEnabled: true,
+    maxDeliveries: 5,
+    assignmentMode: "batch",
+    maxActiveDeliveriesPerDriver: 5,
+  },
+];
+
+function createMockRequest(configuration: RestaurantPublic, deliveryCount: number): DispatchRequest {
+  const requestId = `WEB_${crypto.randomUUID().replaceAll("-", "")}`;
+  const deliveries = configuration.assignmentMode === "individual"
+    ? Array.from({ length: deliveryCount }, (_, index) => ({
+      requestId: `${requestId}_${index + 1}`,
+      deliveryNumber: index + 1,
+      status: "open" as const,
+    }))
+    : [];
+  const timestamp = new Date().toISOString();
+  return {
+    requestId,
+    requestType: configuration.assignmentMode === "batch" ? "batch" : "parent",
+    parentRequestId: requestId,
+    deliveryCount,
+    totalDeliveries: deliveryCount,
+    assignedDeliveries: 0,
+    remainingDeliveries: deliveryCount,
+    assignmentMode: configuration.assignmentMode,
+    status: "open",
+    childRequestIds: deliveries.map((delivery) => delivery.requestId),
+    deliveries,
+    createdAt: timestamp,
+  };
+}
+
 export function DispatchDemo() {
+  const [scenario, setScenario] = useState(0);
   const [deliveryCount, setDeliveryCount] = useState<number | null>(null);
-  const [showMore, setShowMore] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState<DemoStatus>("idle");
-  const [request, setRequest] = useState<DemoRequest | null>(null);
-  const [history, setHistory] = useState<DemoRequest[]>([]);
+  const [request, setRequest] = useState<DispatchRequest | null>(null);
+  const [history, setHistory] = useState<DispatchRequest[]>([]);
   const [now, setNow] = useState<string | null>(null);
-  const [soundNotice, setSoundNotice] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const submissionLock = useRef(false);
-  const requestRef = useRef<DemoRequest | null>(null);
+  const requestRef = useRef<DispatchRequest | null>(null);
+  const createdAtRef = useRef<number | null>(null);
   const submitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const assignmentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const audioContext = useRef<AudioContext | null>(null);
   const mounted = useRef(false);
-  const statusHeading = useRef<HTMLHeadingElement>(null);
-  const keypadContainer = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const keypad = useRef<HTMLDivElement>(null);
+  const configuration = scenarios[scenario];
 
   useEffect(() => {
     mounted.current = true;
     const clock = setInterval(() => setNow(new Date().toISOString()), 1000);
+    const progression = setInterval(() => {
+      const current = requestRef.current;
+      const createdAt = createdAtRef.current;
+      if (!current || createdAt === null || !isOpenRequest(current.status)) return;
+      const elapsed = Date.now() - createdAt;
+      let next = current;
+      if (current.assignmentMode === "batch" && elapsed >= 5000) {
+        next = {
+          ...current,
+          status: "claimed",
+          assignedDeliveries: current.totalDeliveries,
+          remainingDeliveries: 0,
+          driverName: "Conductor Demo",
+          assignedAt: new Date(createdAt + 5000).toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      } else if (current.assignmentMode === "individual") {
+        const target = Math.min(
+          current.totalDeliveries === 1 ? 1 : current.totalDeliveries - 1,
+          Math.floor(elapsed / 5000),
+        );
+        const deliveries = current.deliveries.map((delivery) => ({ ...delivery }));
+        let assigned = deliveries.filter((delivery) => delivery.status === "claimed").length;
+        for (const delivery of deliveries) {
+          if (assigned >= target) break;
+          if (delivery.status !== "open") continue;
+          assigned += 1;
+          delivery.status = "claimed";
+          delivery.driverName = `Conductor Demo ${assigned}`;
+          delivery.assignedAt = new Date(createdAt + assigned * 5000).toISOString();
+        }
+        const remaining = deliveries.filter((delivery) => delivery.status === "open").length;
+        next = {
+          ...current,
+          deliveries,
+          assignedDeliveries: assigned,
+          remainingDeliveries: remaining,
+          status: remaining === 0 ? "fully_assigned" : assigned > 0 ? "partially_claimed" : "open",
+          updatedAt: assigned ? new Date().toISOString() : current.updatedAt,
+        };
+      }
+      if (next !== current) {
+        requestRef.current = next;
+        setRequest(next);
+        setHistory((previous) => previous.map((item) => item.requestId === next.requestId ? next : item));
+      }
+    }, 1000);
     return () => {
       mounted.current = false;
       clearInterval(clock);
+      clearInterval(progression);
       if (submitTimer.current !== null) clearTimeout(submitTimer.current);
-      if (assignmentTimer.current !== null) clearTimeout(assignmentTimer.current);
-      const context = audioContext.current;
-      audioContext.current = null;
-      if (context && context.state !== "closed") {
-        void context.close().catch((error: unknown) => console.warn("No se pudo cerrar el audio del demo.", error));
-      }
     };
   }, []);
 
+  const requestStatus = request?.status;
   useEffect(() => {
-    if (status === "searching" || status === "assigned" || status === "cancelled") {
-      statusHeading.current?.focus();
-    } else if (status === "idle") {
-      keypadContainer.current?.querySelector("button")?.focus();
-    }
-  }, [status]);
-
-  function reportAudioFailure(error: unknown) {
-    console.warn("La confirmación sonora del demo no está disponible.", error);
-    if (mounted.current) setSoundNotice("Sonido no disponible. La confirmación visual sigue activa.");
-  }
-
-  function prepareAudio() {
-    if (typeof window.AudioContext !== "function") {
-      setSoundNotice("Este navegador no permite sonido. La confirmación será visual.");
-      return;
-    }
-    try {
-      audioContext.current ??= new AudioContext();
-      if (audioContext.current.state === "suspended") {
-        void audioContext.current.resume().catch(reportAudioFailure);
-      }
-    } catch (error: unknown) {
-      reportAudioFailure(error);
-    }
-  }
-
-  function playConfirmation() {
-    const context = audioContext.current;
-    if (!context || context.state !== "running") {
-      setSoundNotice("Sonido no disponible. Conductor asignado confirmado en pantalla.");
-      return;
-    }
-    try {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const start = context.currentTime;
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(660, start);
-      oscillator.frequency.setValueAtTime(880, start + 0.12);
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.12, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.onended = () => {
-        oscillator.disconnect();
-        gain.disconnect();
-      };
-      oscillator.start(start);
-      oscillator.stop(start + 0.32);
-    } catch (error: unknown) {
-      reportAudioFailure(error);
-    }
-  }
-
-  function updateRequest(next: DemoRequest) {
-    requestRef.current = next;
-    setRequest(next);
-    setStatus(next.status);
-    setHistory((previous) => previous.map((item) => item.requestId === next.requestId ? next : item));
-  }
+    if (requestStatus) heading.current?.focus();
+    else keypad.current?.querySelector("button")?.focus();
+  }, [requestStatus]);
 
   function submitRequest() {
-    // The ref blocks a second event before React commits the disabled button.
-    if (submissionLock.current || status !== "idle" || deliveryCount === null) return;
+    if (submissionLock.current || request || deliveryCount === null) return;
     submissionLock.current = true;
     setIsSubmitting(true);
-    setStatus("submitting");
-    setSoundNotice(null);
-    prepareAudio();
+    setMessage(null);
+    setNotice(null);
     submitTimer.current = setTimeout(() => {
       submitTimer.current = null;
-      const createdAt = new Date();
-      const next: DemoRequest = {
-        requestId: `DEMO_${createdAt.getTime()}`,
-        deliveryCount,
-        status: "searching",
-        createdAt: createdAt.toISOString(),
-      };
-      requestRef.current = next;
-      setRequest(next);
-      setHistory((previous) => [next, ...previous].slice(0, 5));
-      setStatus("searching");
+      if (!mounted.current) return;
+      const created = createMockRequest(configuration, deliveryCount);
+      requestRef.current = created;
+      createdAtRef.current = Date.now();
+      setRequest(created);
+      setHistory((previous) => [created, ...previous].slice(0, 5));
       setIsSubmitting(false);
-      assignmentTimer.current = setTimeout(() => {
-        assignmentTimer.current = null;
-        if (requestRef.current?.requestId !== next.requestId || requestRef.current.status !== "searching") return;
-        updateRequest({ ...next, status: "assigned", driverName: "Conductor Demo" });
-        playConfirmation();
-      }, 5000);
-    }, 800);
+      submissionLock.current = false;
+    }, 500);
   }
 
   function cancelRequest() {
     const current = requestRef.current;
-    if (current?.status !== "searching") return;
-    if (!window.confirm(`¿Cancelar la solicitud de ${current.deliveryCount} ${current.deliveryCount === 1 ? "entrega" : "entregas"}?`)) return;
-    if (requestRef.current?.status !== "searching") return;
-    if (assignmentTimer.current !== null) {
-      clearTimeout(assignmentTimer.current);
-      assignmentTimer.current = null;
-    }
-    updateRequest({ ...current, status: "cancelled" });
+    if (!current || !isOpenRequest(current.status) || current.remainingDeliveries === 0) return;
+    if (!window.confirm(`¿Cancelar las ${current.remainingDeliveries} entregas abiertas? Las ya asignadas se conservarán.`)) return;
+    const deliveries = current.deliveries.map((delivery) =>
+      delivery.status === "open" ? { ...delivery, status: "cancelled" as const } : delivery);
+    const next: DispatchRequest = {
+      ...current,
+      deliveries,
+      status: "cancelled",
+      remainingDeliveries: 0,
+      updatedAt: new Date().toISOString(),
+    };
+    requestRef.current = next;
+    setRequest(next);
+    setHistory((previous) => previous.map((item) => item.requestId === next.requestId ? next : item));
+  }
+
+  function resendRequest() {
+    const current = requestRef.current;
+    if (!current || !isOpenRequest(current.status) || current.remainingDeliveries === 0) return;
+    const next = { ...current, updatedAt: new Date().toISOString() };
+    requestRef.current = next;
+    setRequest(next);
+    setHistory((previous) => previous.map((item) => item.requestId === next.requestId ? next : item));
+    setNotice("Se volvieron a ofrecer únicamente las entregas pendientes.");
   }
 
   function newRequest() {
-    if (status !== "assigned" && status !== "cancelled") return;
-    submissionLock.current = false;
+    if (!request || isOpenRequest(request.status)) return;
     requestRef.current = null;
+    createdAtRef.current = null;
     setRequest(null);
     setDeliveryCount(null);
-    setShowMore(false);
-    setSoundNotice(null);
-    setStatus("idle");
+    setMessage(null);
+    setNotice(null);
   }
 
-  const todayHistory = history.filter((item) =>
-    now === null || new Date(item.createdAt).toDateString() === new Date(now).toDateString()
-  );
-  const announcement = status === "submitting"
-    ? "Enviando solicitud. Espera un momento."
-    : status === "searching"
-      ? `Solicitud enviada. ${request?.deliveryCount} ${request?.deliveryCount === 1 ? "entrega" : "entregas"}. Buscando conductor.`
-      : status === "assigned"
-        ? `Conductor asignado: Conductor Demo. Solicitud ${request?.requestId}.`
-        : status === "cancelled"
-          ? "Solicitud cancelada. Puedes crear una nueva solicitud."
-          : "Selecciona la cantidad de entregas.";
-
+  const canManage = !!request && isOpenRequest(request.status) && request.remainingDeliveries > 0;
   return (
-    <DispatchFrame restaurantName="La Fonda Demo" now={now}>
-        <div className={styles.workspace}>
-          <section className={styles.orderCard} aria-label="Solicitud de entregas">
-            <div className={styles.cardContent}>
-              {request ? (
-                <DeliveryStatus request={request} headingRef={statusHeading} />
-              ) : (
-                <div ref={keypadContainer}>
-                  <DeliveryKeypad
-                    deliveryCount={deliveryCount}
-                    showMore={showMore}
-                    isSubmitting={isSubmitting}
-                    onSelect={setDeliveryCount}
-                    onShowMore={() => setShowMore(true)}
-                    onSubmit={submitRequest}
-                  />
-                </div>
-              )}
-              {(status === "assigned" || status === "cancelled") && (
-                <button type="button" className={styles.sendButton} onClick={newRequest}>NUEVA SOLICITUD</button>
-              )}
-              <button type="button" className={styles.cancelButton} disabled={status !== "searching"} onClick={cancelRequest}>
-                CANCELAR ÚLTIMA
-              </button>
-              <p className={styles.cancelHint}>{status === "assigned" ? "Una solicitud asignada ya no se puede cancelar." : "Solo puedes cancelar mientras se busca un conductor."}</p>
-              {soundNotice && <p className={styles.soundNotice} role="status">{soundNotice}</p>}
-            </div>
-            <div className={styles.cardFooter}><span aria-hidden="true">✓</span> Solicitudes simuladas · Sin envíos reales</div>
-          </section>
-          <DeliveryHistory requests={todayHistory} />
-        </div>
-        <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>
+    <DispatchFrame restaurantName={configuration.name} now={now}>
+      <div className={styles.workspace}>
+        <section className={styles.orderCard} aria-label="Solicitud de entregas">
+          <div className={styles.cardContent}>
+            {!request ? (
+              <div ref={keypad}>
+                <label className={styles.scenarioLabel} htmlFor="demo-scenario">Escenario de demostración</label>
+                <select id="demo-scenario" className={styles.scenarioSelect} value={scenario} disabled={isSubmitting} onChange={(event) => {
+                  setScenario(Number(event.target.value));
+                  setDeliveryCount(null);
+                }}>
+                  {scenarios.map((item, index) => <option key={item.slug} value={index}>{item.name} · {item.assignmentMode === "individual" ? "individual" : "por lote"}</option>)}
+                </select>
+                <DeliveryKeypad
+                  deliveryCount={deliveryCount}
+                  maxDeliveries={configuration.maxDeliveries}
+                  maxActiveDeliveriesPerDriver={configuration.maxActiveDeliveriesPerDriver}
+                  assignmentMode={configuration.assignmentMode}
+                  isSubmitting={isSubmitting}
+                  onSelect={setDeliveryCount}
+                  onSubmit={submitRequest}
+                />
+              </div>
+            ) : (
+              <DeliveryStatus request={request} headingRef={heading} now={now} />
+            )}
+            {request && !isOpenRequest(request.status) && (
+              <button type="button" className={styles.sendButton} onClick={newRequest}>NUEVA SOLICITUD</button>
+            )}
+            {request && canManage && (
+              <>
+                <button type="button" className={styles.sendButton} onClick={resendRequest}>VOLVER A OFRECER PENDIENTES</button>
+                <button type="button" className={styles.cancelButton} onClick={cancelRequest}>CANCELAR ENTREGAS PENDIENTES</button>
+              </>
+            )}
+            {request && <p className={styles.cancelHint}>La demostración avanza localmente; usa la reoferta o cancelación solo sobre entregas pendientes.</p>}
+            {notice && <p className={styles.soundNotice} role="status">{notice}</p>}
+            {message && <p className={styles.errorNotice} role="alert">{message}</p>}
+          </div>
+          <div className={styles.cardFooter}><span aria-hidden="true">✓</span> Solicitudes simuladas · Sin envíos reales</div>
+        </section>
+        <DeliveryHistory requests={history} />
+      </div>
+      <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {request ? `Solicitud ${request.requestId}: ${request.status}.` : "Selecciona la cantidad de entregas."}
+      </p>
     </DispatchFrame>
   );
 }

@@ -1,11 +1,9 @@
-import { demoStatusLabels, formatDemoTime, type DemoRequest } from "@/lib/dispatch/demo-types";
 import { dispatchStatusLabels, type DispatchRequest } from "@/lib/dispatch/dispatch-types";
+import { formatDemoTime } from "@/lib/dispatch/demo-types";
 import styles from "./DispatchDemo.module.css";
 
-const labels = { ...demoStatusLabels, ...dispatchStatusLabels };
-
 export function DeliveryHistory({ requests, serverBacked = false, mockMode = true }: {
-  requests: (DemoRequest | DispatchRequest)[];
+  requests: DispatchRequest[];
   serverBacked?: boolean;
   mockMode?: boolean;
 }) {
@@ -14,7 +12,7 @@ export function DeliveryHistory({ requests, serverBacked = false, mockMode = tru
       <div className={styles.historyHeading}>
         <div>
           <p className={styles.eyebrow}>ACTIVIDAD</p>
-          <h2 id="history-title">Historial del día</h2>
+          <h2 id="history-title">Últimas solicitudes</h2>
         </div>
         <span className={styles.historyCount}>{requests.length}</span>
       </div>
@@ -37,13 +35,13 @@ export function DeliveryHistory({ requests, serverBacked = false, mockMode = tru
                 {request.requestId.split("_")[0]}_…{request.requestId.slice(-6)}
               </p>
               <p className={styles.historyStatus} data-status={request.status}>
-                <span aria-hidden="true">●</span> {labels[request.status]}
+                <span aria-hidden="true">●</span> {dispatchStatusLabels[request.status]}
               </p>
             </li>
           ))}
         </ol>
       )}
-      <p className={styles.memoryNote}>{serverBacked ? mockMode ? "Simulación en memoria del servidor. Se borra al reiniciar y caduca a las 24 horas." : "Estados del servicio central. El historial local conserva las solicitudes vistas en esta sesión." : "Solo en memoria. Al recargar, el historial se borra."}</p>
+      <p className={styles.memoryNote}>{serverBacked ? mockMode ? "Simulación local en memoria; caduca a las 24 horas." : "Historial consultado al servicio central." : "Simulación en memoria del navegador. Al recargar, el historial se borra."}</p>
     </aside>
   );
 }

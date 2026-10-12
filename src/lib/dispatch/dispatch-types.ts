@@ -1,29 +1,46 @@
-export type DispatchStatus = "pending" | "offer_sent" | "searching" | "claimed" | "cancelled" | "error";
-
-export interface DeliveryRequestResult {
-  success: boolean;
-  requestId: string;
-  status: DispatchStatus;
-  restaurantName?: string;
-  deliveryCount?: number;
-  driverName?: string;
-  driverPhone?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  message?: string;
-}
-
-export interface DispatchRequest {
-  requestId: string;
-  deliveryCount: number;
-  status: DispatchStatus;
-  driverName?: string;
-  createdAt: string;
-}
+export type AssignmentMode = "individual" | "batch";
+export type DispatchStatus =
+  | "open"
+  | "partially_claimed"
+  | "claimed"
+  | "fully_assigned"
+  | "cancelled"
+  | "closed";
 
 export interface RestaurantPublic {
   slug: string;
   name: string;
+  active: boolean;
+  deliveryEnabled: boolean;
+  maxDeliveries: number;
+  assignmentMode: AssignmentMode;
+  maxActiveDeliveriesPerDriver: number;
+}
+
+export interface DeliveryAssignment {
+  requestId: string;
+  deliveryNumber: number;
+  status: "open" | "claimed" | "cancelled" | "closed";
+  driverName?: string;
+  assignedAt?: string;
+}
+
+export interface DispatchRequest {
+  requestId: string;
+  requestType: "parent" | "batch";
+  parentRequestId: string;
+  deliveryCount: number;
+  totalDeliveries: number;
+  assignedDeliveries: number;
+  remainingDeliveries: number;
+  assignmentMode: AssignmentMode;
+  status: DispatchStatus;
+  childRequestIds: string[];
+  deliveries: DeliveryAssignment[];
+  driverName?: string;
+  assignedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface DispatchSnapshot {
@@ -34,14 +51,14 @@ export interface DispatchSnapshot {
 }
 
 export function isOpenRequest(status: DispatchStatus) {
-  return status === "pending" || status === "offer_sent" || status === "searching";
+  return status === "open" || status === "partially_claimed";
 }
 
 export const dispatchStatusLabels: Record<DispatchStatus, string> = {
-  pending: "Solicitud recibida",
-  offer_sent: "Oferta enviada",
-  searching: "Buscando conductor",
+  open: "Buscando conductores",
+  partially_claimed: "Parcialmente asignada",
   claimed: "Conductor asignado",
-  cancelled: "Solicitud cancelada",
-  error: "Error en la solicitud",
+  fully_assigned: "Todas asignadas",
+  cancelled: "Cancelada",
+  closed: "Cerrada",
 };

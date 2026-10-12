@@ -64,6 +64,9 @@
 .pinLabel { display: block; margin-top: 24px; font-weight: 650; }
 .pinInput { display: block; width: 100%; min-height: 64px; padding: 16px; margin: 12px 0 20px; border: 2px solid var(--border-strong); border-radius: var(--radius-2xl); font-size: 22px; background: var(--brand-background); }
 .pinInput:focus-visible { outline: 3px solid var(--brand-secondary); outline-offset: 3px; }
+.scenarioLabel { display: block; margin-top: 4px; font-size: 13px; font-weight: 700; }
+.scenarioSelect { display: block; width: 100%; min-height: 54px; margin-top: 8px; padding: 12px; border: 2px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--brand-background); color: var(--brand-text); font: inherit; }
+.scenarioSelect:focus-visible { outline: 3px solid var(--brand-secondary); outline-offset: 3px; }
 .errorNotice { padding: 16px; margin-top: 18px; border: 1px solid var(--status-danger); border-radius: var(--radius-2xl); background: var(--danger-tint); color: var(--status-danger); }
 .connection time { font-size: 25px; font-variant-numeric: tabular-nums; border-left: 1px solid var(--header-border); padding-left: 24px; }
 
@@ -78,6 +81,8 @@
 .eyebrow { color: var(--brand-text-muted); font-size: 11px; font-weight: 800; letter-spacing: 0.16em; margin-bottom: 12px; }
 .title { font-size: clamp(26px, 3vw, 38px); line-height: 1.2; font-weight: 750; letter-spacing: -0.035em; }
 .subtitle { font-size: 16px; color: var(--brand-text-muted); margin-top: 12px; }
+.assignmentMode { display: inline-flex; margin-top: 18px; padding: 7px 12px; border-radius: var(--radius-md); background: var(--brand-tint); color: var(--brand-secondary); font-size: 13px; font-weight: 750; }
+.limitNote { margin-top: 10px; color: var(--brand-text-muted); font-size: 13px; line-height: 1.5; }
 .keypadFieldset { border: 0; padding: 0; margin-top: 30px; min-width: 0; }
 .keypad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
 .shell .quantity { min-height: 146px; background: var(--brand-background); border: 2px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--brand-text); box-shadow: var(--card-shadow); font-size: 12px; letter-spacing: 0.04em; }
@@ -115,6 +120,15 @@
 .driverName { font-size: 24px; font-weight: 700; margin-top: 14px; }
 .searching { display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 750; margin-top: 16px; font-size: 15px; }
 .searching svg { width: 26px; height: 26px; }
+.deliveryCards { display: grid; gap: 10px; margin-top: 22px; text-align: left; }
+.deliveryCard { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 5px 14px; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-lg); background: var(--brand-background); color: var(--brand-text); }
+.deliveryCard > strong { font-size: 14px; }
+.deliveryCard > span, .deliveryCard > time { color: var(--brand-text-muted); font-size: 13px; }
+.deliveryCard > time { grid-column: 1 / -1; }
+.deliveryState { justify-self: end; font-weight: 750; }
+.deliveryState[data-status="claimed"], .deliveryState[data-status="closed"] { color: var(--status-success); }
+.deliveryState[data-status="cancelled"] { color: var(--status-danger); }
+.noDriverAlert { margin-top: 18px; padding: 14px; border-radius: var(--radius-lg); background: var(--warning-tint); color: var(--status-warning); font-weight: 750; }
 .requestId { font-size: 13px; margin-top: 20px; overflow-wrap: anywhere; }
 .requestId span { font-family: var(--font-geist-mono), monospace; }
 .progress { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 30px; padding-top: 24px; border-top: 1px solid currentColor; }
@@ -143,8 +157,8 @@
 .shortId { color: var(--brand-text-muted); font-family: var(--font-geist-mono), monospace; font-size: 11px; margin-top: 7px; }
 .historyStatus { color: var(--status-warning); font-size: 12px; font-weight: 650; margin-top: 10px; }
 .historyStatus span { font-size: 9px; margin-right: 4px; }
-.historyStatus[data-status="assigned"], .historyStatus[data-status="claimed"] { color: var(--status-success); }
-.historyStatus[data-status="cancelled"], .historyStatus[data-status="error"] { color: var(--status-danger); }
+.historyStatus[data-status="claimed"], .historyStatus[data-status="fully_assigned"], .historyStatus[data-status="closed"] { color: var(--status-success); }
+.historyStatus[data-status="cancelled"] { color: var(--status-danger); }
 .memoryNote { border-top: 1px solid var(--border); padding-top: 16px; color: var(--brand-text-muted); font-size: 11px; line-height: 1.6; }
 .footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-top: 24px; color: var(--brand-text-muted); font-size: 11px; }
 .footer > span:first-child { font-weight: 750; letter-spacing: 0.04em; }

@@ -88,26 +88,22 @@ npm run start
 
 ## 10. Restaurant dispatch demo
 
-For the restaurant-specific simulated API terminal (phase 2), see
+For the authenticated restaurant terminal, Mock Mode, and the future Twilio
+Functions contract, see
 [README-DISPATCH.md](README-DISPATCH.md). Twilio and Make remain disconnected.
 
 Run `npm run dev` and open [http://localhost:3000/dispatch/demo](http://localhost:3000/dispatch/demo).
 The public marketing page at `/` is unchanged.
 
-This phase is **demo-only**. It does not connect to Twilio, Make, external APIs,
-drivers, or a database, and needs no credentials. The online indicator represents
-the simulated terminal, not a live dispatch service.
+The demo has individual (La Fonda, maximum 3) and batch (Brisas, maximum 5)
+scenarios. Individual requests create one card per delivery; batch requests
+create one card for the whole lot. The mock assigns deliveries progressively,
+shows the 20-second pending alert, and lets the operator reoffer or cancel only
+open deliveries. The PIN-protected `/dispatch/[restaurantId]` terminal uses the
+same mock contracts and keeps the public marketing page unchanged.
 
-Select 1–3 deliveries or use **4+** to choose 4–9. Submission locks immediately,
-waits 800 ms, and generates a `DEMO_[timestamp]` request. After five seconds of
-searching, a simulated driver is assigned with a short Web Audio confirmation
-when supported by the browser. A visual notice is shown if sound is unavailable.
-
-**CANCELAR ÚLTIMA** requires browser confirmation and only works during the
-search. Assigned requests cannot be cancelled. After assignment or cancellation,
-**NUEVA SOLICITUD** resets the keypad. The last five requests from the current
-local day are kept only in memory; refreshing or leaving the page clears them.
-No localStorage is used.
+Both paths run without Twilio, Make, or other external APIs while
+`DISPATCH_MOCK_MODE=true`.
 
 ## Legal notice
 
