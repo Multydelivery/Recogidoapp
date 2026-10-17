@@ -144,6 +144,11 @@
 .stepArrow { position: absolute; top: 2px; right: -15px; font-size: 18px; color: inherit; }
 
 .history { padding: 24px; }
+.activeQueue { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 24px; }
+.activeQueue h2 { font-size: 20px; font-weight: 750; }
+.queueList { display: grid; gap: 16px; margin-top: 18px; }
+.queueCard { padding: 18px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--brand-surface); }
+.queueProgress { display: block; width: 100%; height: 12px; margin-top: 14px; accent-color: var(--status-success); }
 .historyHeading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .historyHeading .eyebrow { margin-bottom: 7px; }
 .historyHeading h2 { font-size: 20px; font-weight: 750; }

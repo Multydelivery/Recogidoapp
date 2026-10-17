@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { DispatchError, getRestaurants } from "./config";
+import { dispatchRequestIdPattern } from "../dispatch-types";
 
 interface RateLimitBucket {
   count: number;
@@ -96,7 +97,7 @@ export async function readBody(request: Request, allowedKeys: string[]): Promise
 }
 
 export function readRequestId(value: unknown) {
-  if (typeof value !== "string" || !/^WEB_[a-f0-9]{32}$/.test(value)) {
+  if (typeof value !== "string" || !dispatchRequestIdPattern.test(value)) {
     throw new DispatchError(400, "Request ID inválido.");
   }
   return value;

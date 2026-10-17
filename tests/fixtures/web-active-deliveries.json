@@ -1,0 +1,28 @@
+{
+  "success": true,
+  "restaurantId": "restaurant-test",
+  "count": 1,
+  "requests": [
+    {
+      "requestId": "WEB44632F32E5CD4C10BD8A5C3C4899D1E7",
+      "restaurantId": "restaurant-test",
+      "restaurantName": "Restaurante de prueba",
+      "requestedDeliveries": 1,
+      "assignedDeliveries": 0,
+      "pendingDeliveries": 1,
+      "status": "no_driver_alerted",
+      "alertSent": true,
+      "createdAt": "2026-10-13T22:20:33.214Z",
+      "updatedAt": "2026-10-13T22:20:55.396Z",
+      "children": [
+        {
+          "requestId": "WEB44632F32E5CD4C10BD8A5C3C4899D1E7_1",
+          "deliveryNumber": 1,
+          "status": "open",
+          "winnerName": "",
+          "claimedAt": null
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { isOpenRequest, type DeliveryAssignment, type DispatchRequest, type DispatchSnapshot, type RestaurantPublic } from "../dispatch-types";
+import { fallbackOrderNumber, isOpenRequest, type DeliveryAssignment, type DispatchHistoryRecord, type DispatchHistorySnapshot, type DispatchRequest, type DispatchSnapshot, type RestaurantPublic } from "../dispatch-types";
 import { DispatchError, type RestaurantConfig } from "./config";
 
 interface StoredRequest {
@@ -10,6 +10,8 @@ interface StoredRequest {
   makeTimerStartedAt: string;
   lastOfferedAt?: string;
   lastOfferedRequestIds?: string[];
+  /** When the request reached its final state (all delivered and/or cancelled). */
+  finalizedAt?: string;
 }
 
 interface MockStore {
@@ -51,7 +53,93 @@ function updateAggregate(request: DispatchRequest) {
   }
 }
 
+/** Simulated drivers confirm delivery this long after their assignment. */
+const mockDeliveryDurationMs = 30_000;
+
+function hasDriverOnTheRoad(request: DispatchRequest) {
+  return request.assignmentMode === "batch"
+    ? request.status === "claimed" || request.status === "fully_assigned"
+    : request.deliveries.some((delivery) => delivery.status === "claimed");
+}
+
+/** Simulated drivers pick the order up this long after their assignment. */
+const mockPickUpDelayMs = 12_000;
+
+/** Marks assigned deliveries as picked up once the simulated driver reaches the restaurant. */
+function pickUpDeliveries(request: DispatchRequest) {
+  const now = Date.now();
+  const pickUpTime = (assignedAt?: string) => {
+    const at = assignedAt ? Date.parse(assignedAt) + mockPickUpDelayMs : Number.NaN;
+    return Number.isFinite(at) && now >= at ? new Date(at).toISOString() : undefined;
+  };
+  if (request.assignmentMode === "batch") {
+    if (request.status !== "claimed" && request.status !== "fully_assigned") return;
+    const at = request.pickedUpAt ?? pickUpTime(request.assignedAt);
+    if (at && !request.pickedUpAt) {
+      request.pickedUpAt = at;
+      request.updatedAt = at;
+    }
+    return;
+  }
+  for (const delivery of request.deliveries) {
+    if (delivery.status !== "claimed" || delivery.pickedUp) continue;
+    const at = pickUpTime(delivery.assignedAt);
+    if (!at) continue;
+    delivery.pickedUp = true;
+    delivery.pickedUpAt = at;
+    delivery.updatedAt = at;
+    request.updatedAt = at;
+  }
+}
+
+/** Marks assigned deliveries as delivered once the simulated trip is over. Never touches open or cancelled ones. */
+function completeDeliveries(entry: StoredRequest) {
+  const request = entry.request;
+  if (!hasDriverOnTheRoad(request)) return;
+  const assignedTimes = request.assignmentMode === "batch"
+    ? [request.assignedAt]
+    : request.deliveries.filter((delivery) => delivery.status === "claimed").map((delivery) => delivery.assignedAt);
+  const lastAssigned = Math.max(...assignedTimes.map((value) => value ? Date.parse(value) : Number.NaN));
+  if (!Number.isFinite(lastAssigned) || Date.now() < lastAssigned + mockDeliveryDurationMs) return;
+  const finishedAt = new Date(lastAssigned + mockDeliveryDurationMs).toISOString();
+  request.deliveries.forEach((delivery) => {
+    if (delivery.status !== "claimed") return;
+    delivery.status = "closed";
+    delivery.completedAt = finishedAt;
+    delivery.updatedAt = finishedAt;
+  });
+  if (request.status === "claimed" || request.status === "fully_assigned") {
+    request.status = "closed";
+    request.completedAt = finishedAt;
+  }
+  request.updatedAt = finishedAt;
+  entry.finalizedAt ??= finishedAt;
+}
+
+/** Mirrors the central service's delivered / on-the-road counters for the simulator. */
+function refreshProgressCounts(request: DispatchRequest) {
+  if (request.assignmentMode === "batch") {
+    const onTheRoad = request.status === "claimed" || request.status === "fully_assigned";
+    request.completedDeliveries = request.status === "closed" ? request.totalDeliveries : 0;
+    request.activeDeliveries = onTheRoad ? request.totalDeliveries : 0;
+    request.pickedUpDeliveries = onTheRoad && request.pickedUpAt ? request.totalDeliveries : 0;
+    request.cancelledDeliveries = request.status === "cancelled" ? request.totalDeliveries : 0;
+    return;
+  }
+  request.completedDeliveries = request.deliveries.filter((delivery) => delivery.status === "closed").length;
+  request.activeDeliveries = request.deliveries.filter((delivery) => delivery.status === "claimed").length;
+  request.pickedUpDeliveries = request.deliveries.filter((delivery) => delivery.status === "claimed" && delivery.pickedUp).length;
+  request.cancelledDeliveries = request.deliveries.filter((delivery) => delivery.status === "cancelled").length;
+}
+
 function advance(entry: StoredRequest) {
+  completeDeliveries(entry);
+  assignDrivers(entry);
+  pickUpDeliveries(entry.request);
+  refreshProgressCounts(entry.request);
+}
+
+function assignDrivers(entry: StoredRequest) {
   const request = entry.request;
   if (!isOpenRequest(request.status)) return;
   const elapsed = Date.now() - Date.parse(request.createdAt);
@@ -131,10 +219,13 @@ export function createRequest(restaurant: RestaurantConfig, deliveryCount: numbe
       requestId: `${requestId}_${index + 1}`,
       deliveryNumber: index + 1,
       status: "open",
+      orderNumber: fallbackOrderNumber(requestId, index + 1),
     }))
     : [];
   const request: DispatchRequest = {
     requestId,
+    orderNumber: fallbackOrderNumber(requestId),
+    restaurantName: restaurant.name,
     requestType: restaurant.assignmentMode === "batch" ? "batch" : "parent",
     parentRequestId: requestId,
     deliveryCount,
@@ -166,24 +257,33 @@ function ownedRequest(restaurant: RestaurantConfig, requestId: string) {
   return entry;
 }
 
-export function cancelRequest(restaurant: RestaurantConfig, requestId: string) {
+export function cancelRequest(restaurant: RestaurantConfig, requestId: string): DispatchSnapshot & { cancelledDeliveries: number } {
   const entry = ownedRequest(restaurant, requestId);
-  if (entry.request.status === "cancelled") return snapshot(restaurant, requestId);
-  if (!isOpenRequest(entry.request.status)) {
-    throw new DispatchError(409, "No quedan entregas abiertas para cancelar.");
-  }
-  if (entry.request.assignmentMode === "batch") {
-    entry.request.status = "cancelled";
-    entry.request.remainingDeliveries = 0;
+  const request = entry.request;
+  const pending = !isOpenRequest(request.status) ? 0 : request.assignmentMode === "batch"
+    ? (request.status === "open" ? request.remainingDeliveries : 0)
+    : request.deliveries.filter((delivery: DeliveryAssignment) => delivery.status === "open").length;
+  // Idempotent: repeating the cancellation or cancelling a fully assigned request changes nothing.
+  if (pending === 0) return { ...snapshot(restaurant, requestId), cancelledDeliveries: 0 };
+  const cancelledAt = new Date().toISOString();
+  if (request.assignmentMode === "batch") {
+    request.status = "cancelled";
+    request.remainingDeliveries = 0;
   } else {
-    entry.request.deliveries.forEach((delivery: DeliveryAssignment) => {
-      if (delivery.status === "open") delivery.status = "cancelled";
+    request.deliveries.forEach((delivery: DeliveryAssignment) => {
+      if (delivery.status !== "open") return;
+      delivery.status = "cancelled";
+      delivery.cancelledAt = cancelledAt;
+      delivery.updatedAt = cancelledAt;
     });
-    entry.request.remainingDeliveries = 0;
-    entry.request.status = "cancelled";
+    request.remainingDeliveries = 0;
+    request.status = "cancelled";
   }
-  entry.request.updatedAt = new Date().toISOString();
-  return snapshot(restaurant, requestId);
+  request.cancelledAt = cancelledAt;
+  request.updatedAt = cancelledAt;
+  refreshProgressCounts(request);
+  if (!hasDriverOnTheRoad(request)) entry.finalizedAt ??= request.updatedAt;
+  return { ...snapshot(restaurant, requestId), cancelledDeliveries: pending };
 }
 
 export function resendRequest(restaurant: RestaurantConfig, requestId: string) {
@@ -203,4 +303,56 @@ export function resendRequest(restaurant: RestaurantConfig, requestId: string) {
 
 export function recentRequests(restaurant: RestaurantConfig) {
   return snapshot(restaurant).history;
+}
+
+/** Final (delivered and/or cancelled) simulator requests in the same shape as the real history. */
+export function historyRecords(restaurant: RestaurantConfig): DispatchHistorySnapshot {
+  const entries = restaurantRequests(restaurant);
+  entries.forEach(advance);
+  const requests = entries
+    .filter((entry) => entry.finalizedAt && !isOpenRequest(entry.request.status) && !hasDriverOnTheRoad(entry.request))
+    .map((entry): DispatchHistoryRecord => {
+      const request = entry.request;
+      const batch = request.assignmentMode === "batch";
+      const completedDeliveries = batch
+        ? (request.status === "closed" ? request.totalDeliveries : 0)
+        : request.deliveries.filter((delivery: DeliveryAssignment) => delivery.status === "closed").length;
+      const cancelledDeliveries = batch
+        ? (request.status === "cancelled" ? request.totalDeliveries : 0)
+        : request.deliveries.filter((delivery: DeliveryAssignment) => delivery.status === "cancelled").length;
+      const deliveries = request.deliveries.map((delivery: DeliveryAssignment): DispatchHistoryRecord["deliveries"][number] => ({
+        requestId: delivery.requestId,
+        deliveryNumber: delivery.deliveryNumber,
+        status: delivery.status === "closed" ? "completed" as const : delivery.status === "claimed" ? "assigned" as const : delivery.status,
+        ...(delivery.orderNumber ? { orderNumber: delivery.orderNumber } : {}),
+        ...(delivery.status === "closed" && delivery.driverName ? { driverName: delivery.driverName } : {}),
+        ...(delivery.status === "closed" && delivery.assignedAt ? { assignedAt: delivery.assignedAt } : {}),
+        ...(delivery.status === "closed" && delivery.pickedUpAt ? { pickedUpAt: delivery.pickedUpAt } : {}),
+        ...(delivery.completedAt ? { completedAt: delivery.completedAt } : {}),
+        ...(delivery.cancelledAt ? { cancelledAt: delivery.cancelledAt } : {}),
+        ...(delivery.status !== "open" && entry.finalizedAt ? { finalizedAt: entry.finalizedAt } : {}),
+      }));
+      const driverNames = [...new Set([
+        ...(batch && request.driverName ? [request.driverName] : []),
+        ...deliveries.flatMap((delivery: DispatchHistoryRecord["deliveries"][number]) => delivery.driverName ? [delivery.driverName] : []),
+      ])];
+      return {
+        requestId: request.requestId,
+        ...(request.orderNumber ? { orderNumber: request.orderNumber } : {}),
+        status: request.status === "closed" ? "completed" : "cancelled",
+        totalDeliveries: request.totalDeliveries,
+        assignedDeliveries: completedDeliveries,
+        completedDeliveries,
+        cancelledDeliveries,
+        pendingDeliveries: 0,
+        activeDeliveries: 0,
+        driverNames,
+        createdAt: request.createdAt,
+        finalizedAt: entry.finalizedAt ?? null,
+        deliveries,
+      };
+    })
+    .sort((left, right) => Date.parse(right.finalizedAt ?? right.createdAt) - Date.parse(left.finalizedAt ?? left.createdAt))
+    .slice(0, 50);
+  return { restaurantId: restaurant.slug, count: requests.length, requests: structuredClone(requests) };
 }

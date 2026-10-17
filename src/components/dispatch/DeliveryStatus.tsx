@@ -15,7 +15,7 @@ export function DeliveryStatus({ request, headingRef, now }: {
   const assigned = request.status === "fully_assigned" || request.status === "claimed" ||
     (closed && request.assignedDeliveries === request.totalDeliveries);
   const pendingForMs = Date.parse(now ?? request.createdAt) - Date.parse(request.createdAt);
-  const noDriver = open && request.remainingDeliveries > 0 && pendingForMs >= 20_000;
+  const noDriver = open && request.remainingDeliveries > 0 && (request.noDriverAlerted || pendingForMs >= 20_000);
   const panelClass = cancelled ? styles.cancelledPanel : open ? styles.warningPanel : styles.successPanel;
   const heading = cancelled
     ? "SOLICITUD CANCELADA"
@@ -48,7 +48,7 @@ export function DeliveryStatus({ request, headingRef, now }: {
       <p className={styles.deliveryTotal}>
         {request.assignmentMode === "batch"
           ? `${request.totalDeliveries} ${request.totalDeliveries === 1 ? "ENTREGA" : "ENTREGAS"} EN UN LOTE`
-          : `${request.assignedDeliveries} ASIGNADAS · ${request.remainingDeliveries} PENDIENTES`}
+          : `${request.assignedDeliveries} DE ${request.totalDeliveries} ASIGNADAS · ${request.remainingDeliveries} PENDIENTES`}
       </p>
       {request.assignmentMode === "individual" && request.deliveries.length > 0 ? (
         <ol className={styles.deliveryCards} aria-label="Estado de cada entrega">

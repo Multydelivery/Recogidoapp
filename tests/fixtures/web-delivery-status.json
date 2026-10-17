@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "request": {
+    "requestId": "WEB90D3F8A76C2A4DB1B5C19FBCD4DF45E1",
+    "restaurantId": "restaurant-test",
+    "restaurantName": "Restaurante de prueba",
+    "requestedDeliveries": 1,
+    "assignedDeliveries": 1,
+    "pendingDeliveries": 0,
+    "status": "fully_assigned",
+    "createdAt": "2026-10-13T16:34:15.392Z",
+    "updatedAt": "2026-10-13T17:02:45.073Z",
+    "children": [
+      {
+        "requestId": "WEB90D3F8A76C2A4DB1B5C19FBCD4DF45E1_1",
+        "deliveryNumber": 1,
+        "status": "claimed",
+        "winnerName": "Maria Elizabeth",
+        "claimedAt": "2026-10-13T17:02:45.073Z"
+      }
+    ]
+  }
+}

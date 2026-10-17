@@ -1,0 +1,25 @@
+{
+  "assignedDeliveries": 0,
+  "createdAt": "2026-10-13T16:34:15.115Z",
+  "deliveryCount": 1,
+  "idempotent": false,
+  "pendingDeliveries": 1,
+  "request": {
+    "assignedDeliveries": 0,
+    "children": [],
+    "createdAt": "2026-10-13T16:34:15.115Z",
+    "pendingDeliveries": 1,
+    "requestId": "WEB90D3F8A76C2A4DB1B5C19FBCD4DF45E1",
+    "requestedDeliveries": 1,
+    "restaurantId": "restaurant-test",
+    "restaurantName": "Restaurante de prueba",
+    "status": "open",
+    "updatedAt": "2026-10-13T16:34:15.115Z"
+  },
+  "requestId": "WEB90D3F8A76C2A4DB1B5C19FBCD4DF45E1",
+  "requestedDeliveries": 1,
+  "restaurantId": "restaurant-test",
+  "restaurantName": "Restaurante de prueba",
+  "status": "open",
+  "success": true
+}

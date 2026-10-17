@@ -69,6 +69,7 @@ const mockCapabilities: DispatchCapabilities = {
   canCancel: true,
   canResend: true,
   canLoadHistory: true,
+  canLoadActive: false,
 };
 
 export function getDispatchCapabilities(restaurantId: string): DispatchCapabilities {
@@ -85,6 +86,7 @@ export function getDispatchCapabilities(restaurantId: string): DispatchCapabilit
     canCancel: available("cancel"),
     canResend: available("resend"),
     canLoadHistory: available("history"),
+    canLoadActive: available("active"),
   };
 }
 
@@ -92,7 +94,7 @@ export function isLiveTestConfigurationIncomplete(restaurantId = pilotRestaurant
   return isLiveTestPilotRequested(restaurantId) && !getDispatchCapabilities(restaurantId).liveDispatch;
 }
 
-export type BackendOperation = "create" | "config" | "status" | "cancel" | "resend" | "history";
+export type BackendOperation = "create" | "config" | "status" | "cancel" | "resend" | "history" | "active";
 
 const backendUrlVariables: Record<BackendOperation, string> = {
   create: "TWILIO_WEB_CREATE_URL",
@@ -101,6 +103,7 @@ const backendUrlVariables: Record<BackendOperation, string> = {
   cancel: "TWILIO_WEB_CANCEL_URL",
   resend: "TWILIO_WEB_RESEND_URL",
   history: "TWILIO_WEB_HISTORY_URL",
+  active: "TWILIO_WEB_ACTIVE_URL",
 };
 
 export function getBackendConfig(operation: BackendOperation) {
@@ -114,6 +117,7 @@ export function getBackendConfig(operation: BackendOperation) {
     cancel: "RECOGIDO_DISPATCH_CANCEL_URL",
     resend: "RECOGIDO_DISPATCH_RESEND_URL",
     history: "RECOGIDO_DISPATCH_HISTORY_URL",
+    active: "TWILIO_WEB_ACTIVE_URL",
   } satisfies Record<BackendOperation, string>)[operation];
   const raw = process.env[name];
   if (!raw?.trim()) throw missing();
@@ -135,7 +139,7 @@ export function getBackendConfig(operation: BackendOperation) {
   const password = liveTestEnabled ? process.env.TWILIO_WEB_AUTH_PASSWORD : undefined;
   const secret = liveTestEnabled ? undefined : process.env.RECOGIDO_DISPATCH_API_SECRET;
   const makeTimerSecret = liveTestEnabled ? process.env.MAKE_TIMER_SECRET : undefined;
-  if (liveTestEnabled ? (!username?.trim() || !password?.trim() || !makeTimerSecret?.trim()) : !secret?.trim()) throw missing();
+  if (liveTestEnabled ? (!username?.trim() || !password?.trim() || (operation !== "active" && !makeTimerSecret?.trim())) : !secret?.trim()) throw missing();
   const rawTimeout = process.env.DISPATCH_REQUEST_TIMEOUT_MS ?? "10000";
   if (!/^\d+$/.test(rawTimeout)) throw invalid();
   const timeoutMs = Number(rawTimeout);

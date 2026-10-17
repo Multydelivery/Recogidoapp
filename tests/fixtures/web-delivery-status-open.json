@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "request": {
+    "requestId": "WEB22222222222222222222222222222222",
+    "restaurantId": "restaurant-test",
+    "restaurantName": "Restaurante de prueba",
+    "requestedDeliveries": 1,
+    "assignedDeliveries": 0,
+    "pendingDeliveries": 1,
+    "status": "open",
+    "createdAt": "2026-10-13T17:00:00.000Z",
+    "updatedAt": "2026-10-13T17:00:00.000Z",
+    "children": [
+      {
+        "requestId": "WEB22222222222222222222222222222222_1",
+        "deliveryNumber": 1,
+        "status": "open",
+        "winnerName": "",
+        "claimedAt": null
+      }
+    ]
+  }
+}

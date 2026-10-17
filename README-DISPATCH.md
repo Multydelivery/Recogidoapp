@@ -4,6 +4,9 @@ El panel de restaurante está disponible en `/dispatch/[restaurantId]`; `/dispat
 simula modalidades individual y por lote sin autenticación ni servicios externos.
 La página pública `/` y el flujo telefónico existente no forman parte de Dispatch.
 
+La interfaz de conductores en modo demostración (`/driver/demo`, sin conexión con
+Twilio ni WhatsApp) se documenta en [README-DRIVER.md](./README-DRIVER.md).
+
 **La integración continúa en `DISPATCH_MOCK_MODE=true`.** No activar el modo real
 ni configurar URLs privadas hasta completar y validar las Functions descritas abajo.
 
@@ -48,7 +51,7 @@ Todas las respuestas de API usan `Cache-Control: no-store`.
 | API Route | Función |
 | --- | --- |
 | `GET /api/dispatch/config?restaurant=...` | Valida el dispositivo y consulta configuración pública del restaurante. |
-| `POST /api/dispatch/request` | Crea una solicitud; exige cantidad e idempotency key generada por el cliente. El servidor genera el `requestId`. |
+| `POST /api/dispatch/request` | Recibe `restaurantId`, `deliveryCount` e `idempotencyKey` UUID v4. En modo real, Twilio genera el `requestId`; el mock lo genera localmente. |
 | `GET /api/dispatch/status?restaurant=...&requestId=...` | Consulta estado autorizado; sin ID devuelve el estado actual. |
 | `POST /api/dispatch/cancel` | Cancela únicamente entregas abiertas; las asignadas se conservan. |
 | `POST /api/dispatch/resend` | Reoferta únicamente entregas abiertas. |
@@ -61,11 +64,13 @@ ID de solicitud, código de estado y duración aproximada.
 
 ## Contrato de solicitudes
 
-El ID principal se genera en el servidor como `WEB_<UUID hexadecimal de 32
-caracteres>`. La creación se envía a Twilio como `application/x-www-form-urlencoded`
-con `restaurantId`, `restaurantName`, `restaurantPhone`, `deliveryCount`,
-`requestId`, `idempotencyKey` y `secret`. Restaurante y teléfono proceden de la
-sesión/configuración del servidor, nunca del cuerpo web.
+En el piloto real, Twilio genera el ID principal como `WEB<UUID sin guiones>`.
+El adaptador conserva ese ID (incluidas sus mayúsculas) y exige `WEB` seguido de
+32 caracteres hexadecimales en respuestas reales. El mock conserva `WEB_<32 hex>`.
+La creación se envía como `application/x-www-form-urlencoded` exclusivamente
+con `restaurantId`, `deliveryCount` e `idempotencyKey` (UUID v4). Basic Auth
+permanece en el servidor; no se envían PIN, teléfono ni ID anticipado a Twilio.
+El teléfono utilizado por Make procede de la configuración del servidor.
 
 - **Individual (La Fonda y restaurante de prueba):** un `parent` con IDs de
   entrega hija `<requestId>_1...N`; cada hijo tiene estado y asignación propios.

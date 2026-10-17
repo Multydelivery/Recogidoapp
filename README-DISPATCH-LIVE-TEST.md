@@ -37,9 +37,10 @@ configurarse en el gestor de secretos del entorno, nunca en el repositorio.
 | `TWILIO_WEB_CONFIG_URL` | Sí | Twilio Function autenticada que consulta el perfil desde Sync Map `restaurants`. |
 | `TWILIO_WEB_CREATE_URL` | Sí | Twilio Function para crear la solicitud web. |
 | `TWILIO_WEB_STATUS_URL` | Sí | Twilio Function para consultar una solicitud propia o la solicitud activa. |
+| `TWILIO_WEB_ACTIVE_URL` | No | Cola de todas las solicitudes activas; habilita la vista adicional y creación simultánea sólo en el piloto. |
 | `TWILIO_WEB_CANCEL_URL` | No | Opcional en el piloto inicial; cancelación web deshabilitada hasta configurarla. |
 | `TWILIO_WEB_RESEND_URL` | No | Opcional en el piloto inicial; reoferta web deshabilitada hasta configurarla. |
-| `TWILIO_WEB_HISTORY_URL` | No | Opcional en el piloto inicial; el historial real no se consulta hasta configurarla. |
+| `TWILIO_WEB_HISTORY_URL` | No | Opcional en el piloto inicial; sin ella la ruta de historial responde 503 y el terminal muestra una nota discreta. |
 | `TWILIO_WEB_AUTH_USERNAME` | Sí | Usuario de autenticación servidor a servidor. |
 | `TWILIO_WEB_AUTH_PASSWORD` | Sí | Contraseña de autenticación servidor a servidor. |
 | `MAKE_TIMER_WEBHOOK_URL` | Sí para crear/reofertar | Webhook privado que inicia el timer una vez por la solicitud principal/generación. |
@@ -69,14 +70,15 @@ debe reflejarse en respuestas o logs.
 | Contrato | Campos de formulario | Resultado mínimo |
 | --- | --- | --- |
 | [Configuración](docs/twilio-functions/web-config.md) | `restaurantId` | `restaurant: { restaurantId, name, active, deliveryEnabled, maxDeliveries, assignmentMode, maxActiveDeliveriesPerDriver }` |
-| [Crear solicitud](docs/twilio-functions/web-create.md) | `restaurantId`, `restaurantName`, `restaurantPhone`, `deliveryCount`, `requestId`, `idempotencyKey` | Una raíz batch o una raíz parent con N hijos; incluir estado y datos de asignación disponibles. |
+| [Crear solicitud](docs/twilio-functions/web-create.md) | `restaurantId`, `deliveryCount`, `idempotencyKey` (UUID v4) | `success: true`, `requestId`, `restaurantId`, `deliveryCount` o `requestedDeliveries`; incluir estado y datos de asignación disponibles. |
 | [Consultar estado](docs/twilio-functions/web-status.md) | `restaurantId`, `requestId` (vacío para solicitud activa) | `request` de ese restaurante o `request: null`. |
-| [Cancelar](docs/twilio-functions/web-cancel.md) | `restaurantId`, `requestId` | Estado actualizado; nunca cancelar hijos ya asignados. |
+| Cola activa | `restaurantId` | `{ success: true, restaurantId, count, requests }`; sólo `open`, `partially_claimed`, `no_driver_alerted`. |
+| [Cancelar](docs/twilio-functions/web-cancel.md) | `restaurantId`, `requestId`, `action=cancel_pending` | Estado actualizado (opcional `cancelledDeliveries`); sólo cancela pendientes, nunca hijos asignados/cerrados. |
 | [Reofertar](docs/twilio-functions/web-resend.md) | `restaurantId`, `requestId`, `openRequestIds` (IDs separados por coma) | Estado actualizado; enviar únicamente los IDs abiertos validados por el backend. |
-| [Historial](docs/twilio-functions/web-history.md) | `restaurantId` | `requests` con cero a cinco raíces pertenecientes al restaurante. |
+| [Historial](docs/twilio-functions/web-history.md) | `restaurantId`, `limit=50` | `success`, `restaurantId`, `count` y `requests` (hasta 50 raíces finalizadas del restaurante). |
 
 Para todos los endpoints que reciben `requestId`, validar el ID raíz
-`WEB_<32 caracteres hexadecimales>`, cargar la raíz y verificar la pertenencia
+`WEB<32 caracteres hexadecimales>` sin distinguir mayúsculas/minúsculas, cargar la raíz y verificar la pertenencia
 antes de leer o mutar datos. No confiar en IDs hijos, número de entregas,
 teléfonos, modalidad o estado que provengan del navegador.
 
@@ -93,8 +95,8 @@ del conductor. Los estados raíz reconocidos son `open`,
 
 ### Idempotencia y temporizador
 
-El servidor genera un ID determinista `WEB_<32 hex>` a partir del restaurante y
-la clave de idempotencia para conservar el ID ante reintentos. Eso **no**
+Twilio genera el ID a partir del UUID v4 de idempotencia; Next.js no genera
+ni envía un ID anticipado en modo real. Eso **no**
 garantiza por sí solo que la operación sea idempotente entre instancias,
 despliegues o reinicios. Antes de habilitar el piloto, la Function de creación
 debe guardar y comprobar atómicamente una clave persistente en Sync (o un
@@ -110,6 +112,49 @@ sólo el conjunto de hijos abiertos y una nueva generación. La aplicación
 recuerda llamadas dentro de un proceso, pero Make debe deduplicar de forma
 persistente: esa protección en memoria no cubre múltiples instancias ni
 reinicios. Nunca crear un timer por cada hijo.
+
+## Cola de solicitudes activas
+
+`GET /api/dispatch/restaurants/[restaurantId]/active` valida el mismo
+`X-Device-Token` del terminal. El adaptador consulta `TWILIO_WEB_ACTIVE_URL`
+con POST form-urlencoded y Basic Auth exclusivamente server-side, valida cada
+raíz con el normalizador compartido y devuelve sólo datos públicos.
+La URL es opcional y no bloquea configuración, creación ni estado individual.
+Otros restaurantes conservan el panel mock anterior; no se usa mock como
+fallback de la cola real.
+
+La cola se carga al autenticar el terminal. Una sola consulta actualiza todas
+las tarjetas cada 4 segundos mientras haya solicitudes; al quedar vacía se
+detiene. Se pausa con la pestaña oculta y se consulta al volver. Crear,
+cancelar o reofertar invalida inmediatamente la cola, coalesciendo consultas
+simultáneas. Los errores se muestran junto a los últimos datos confirmados y
+permiten reintentar. El timeout upstream conserva HTTP 504, consistente con
+las rutas existentes; HTTP 401/403 de Twilio se trata como falla upstream (502),
+no como PIN incorrecto del restaurante.
+
+Cancelación: cada tarjeta con entregas pendientes muestra “CANCELAR SOLICITUD”
+(sin asignaciones) o “CANCELAR N PENDIENTE(S)” (asignación parcial). Un diálogo
+accesible (“VOLVER” / “CANCELAR PENDIENTES”) explica cuántas entregas se
+cancelan y que las asignadas no se tocan. El servidor envía
+`action=cancel_pending`, es idempotente y nunca modifica entregas asignadas o
+cerradas; el terminal muestra un solo aviso con el resultado y vuelve a
+consultar la cola de inmediato.
+
+“Nueva solicitud” deja la confirmación principal para abrir el selector sin
+cancelar las solicitudes pendientes, que permanecen en la cola. El polling
+individual de la confirmación conserva su parada por ID al estado terminal.
+Consultar la cola nunca crea ofertas, reenvía WhatsApp ni inicia Make.
+
+Para comprobar localmente con el endpoint real previamente autorizado, abre
+`http://localhost:3000/dispatch/restaurant-test`, valida el PIN y revisa
+“Solicitudes activas”. No es necesario crear una solicitud para consultar
+la cola. Las pruebas automáticas usan fetch simulado y un servidor mock
+aislado, nunca el endpoint real.
+
+Cada entrega se muestra con su número público (`#E814C7-01`) y una línea de
+tiempo de cuatro pasos; el `requestId` interno nunca aparece en pantalla. El
+aviso “Pedido recogido” es silencioso. Ver los campos opcionales en
+`docs/twilio-functions/web-status.md`.
 
 ## Bloqueos antes de habilitar
 

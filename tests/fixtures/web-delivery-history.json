@@ -1,0 +1,64 @@
+{
+  "success": true,
+  "restaurantId": "restaurant-test",
+  "count": 3,
+  "requests": [
+    {
+      "requestId": "WEBA1B2C3D4E5F60718293A4B5C6D7E8F90",
+      "restaurantId": "restaurant-test",
+      "restaurantName": "Restaurante de prueba",
+      "totalDeliveries": 2,
+      "assignedDeliveries": 2,
+      "completedDeliveries": 2,
+      "cancelledDeliveries": 0,
+      "pendingDeliveries": 0,
+      "activeDeliveries": 0,
+      "status": "completed",
+      "driverNames": ["Conductor 1", "Conductor 2"],
+      "createdAt": "2026-10-13T22:00:00.000Z",
+      "finalizedAt": "2026-10-13T22:40:00.000Z",
+      "deliveries": [
+        { "requestId": "WEBA1B2C3D4E5F60718293A4B5C6D7E8F90_1", "deliveryNumber": 1, "status": "completed", "winnerName": "Conductor 1", "winnerPhone": "+15550000001", "claimedAt": "2026-10-13T22:01:00.000Z", "completedAt": "2026-10-13T22:30:00.000Z" },
+        { "requestId": "WEBA1B2C3D4E5F60718293A4B5C6D7E8F90_2", "deliveryNumber": 2, "status": "completed", "winnerName": "Conductor 2", "winnerPhone": "+15550000002", "claimedAt": "2026-10-13T22:02:00.000Z", "completedAt": "2026-10-13T22:40:00.000Z" }
+      ]
+    },
+    {
+      "requestId": "WEBB1B2C3D4E5F60718293A4B5C6D7E8F90",
+      "restaurantId": "restaurant-test",
+      "restaurantName": "Restaurante de prueba",
+      "totalDeliveries": 1,
+      "assignedDeliveries": 0,
+      "completedDeliveries": 0,
+      "cancelledDeliveries": 1,
+      "pendingDeliveries": 0,
+      "activeDeliveries": 0,
+      "status": "cancelled",
+      "driverNames": [],
+      "createdAt": "2026-10-14T15:00:00.000Z",
+      "finalizedAt": "2026-10-14T15:05:00.000Z",
+      "deliveries": [
+        { "requestId": "WEBB1B2C3D4E5F60718293A4B5C6D7E8F90_1", "deliveryNumber": 1, "status": "cancelled", "winnerName": "", "claimedAt": null, "cancelledAt": "2026-10-14T15:05:00.000Z" }
+      ]
+    },
+    {
+      "requestId": "WEBC1B2C3D4E5F60718293A4B5C6D7E8F90",
+      "restaurantId": "restaurant-test",
+      "restaurantName": "Restaurante de prueba",
+      "totalDeliveries": 3,
+      "assignedDeliveries": 2,
+      "completedDeliveries": 2,
+      "cancelledDeliveries": 1,
+      "pendingDeliveries": 0,
+      "activeDeliveries": 0,
+      "status": "completed",
+      "driverNames": ["Conductor 1"],
+      "createdAt": "2026-10-12T18:00:00.000Z",
+      "finalizedAt": null,
+      "deliveries": [
+        { "requestId": "WEBC1B2C3D4E5F60718293A4B5C6D7E8F90_1", "deliveryNumber": 1, "status": "closed", "winnerName": "Conductor 1", "claimedAt": "2026-10-12T18:01:00.000Z" },
+        { "requestId": "WEBC1B2C3D4E5F60718293A4B5C6D7E8F90_2", "deliveryNumber": 2, "status": "closed", "winnerName": "Conductor 1", "claimedAt": "2026-10-12T18:20:00.000Z" },
+        { "requestId": "WEBC1B2C3D4E5F60718293A4B5C6D7E8F90_3", "deliveryNumber": 3, "status": "cancelled" }
+      ]
+    }
+  ]
+}
