@@ -3,12 +3,13 @@
 import { useEffect, useRef } from "react";
 import styles from "./DriverDemo.module.css";
 
-export function DriverConfirmDialog({ open, title, description, confirmLabel, busy, onConfirm, onCancel }: {
+export function DriverConfirmDialog({ open, title, description, confirmLabel, busy, onConfirm, onCancel, confirmDisabled = false }: {
   open: boolean;
   title: string;
   description?: string;
   confirmLabel: string;
   busy: boolean;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -42,7 +43,7 @@ export function DriverConfirmDialog({ open, title, description, confirmLabel, bu
       <h2 id="driver-dialog-title" className={styles.dialogTitle}>{title}</h2>
       {description && <p id="driver-dialog-description" className={styles.dialogText}>{description}</p>}
       <div className={styles.dialogActions}>
-        <button type="button" className={styles.primaryButton} disabled={busy} onClick={onConfirm}>
+        <button type="button" className={styles.primaryButton} disabled={busy || confirmDisabled} onClick={onConfirm}>
           {busy && <span className={styles.spinner} aria-hidden="true" />}
           {busy ? "COMPLETANDO…" : confirmLabel}
         </button>

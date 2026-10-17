@@ -104,3 +104,72 @@ npm run build
 `npm run test:driver` ejecuta demo, adaptador, contratos HTTP de los Route Handlers
 usando Request/Response y controlador del piloto con fetch simulado. No carga
 `.env.local`, no utiliza credenciales reales ni llama servicios externos.
+
+## PWA: Recogido Conductor
+
+- Inicio: `/driver/maria-elizabeth`; ámbito instalado y del service worker: `/driver/`.
+- Manifest: `/driver-manifest.webmanifest`, enlazado solo por el layout de conductor.
+  No modifica metadata ni dashboards de restaurantes.
+- Service worker: `/driver/sw.js`. Se registra solo en producción y requiere HTTPS
+  (localhost también es válido). En `npm run dev` no se registra.
+- Iconos oficiales con fondo blanco opaco: 192, 512, maskable 512 y Apple 180 en
+  `public/driver/icons/`. El maskable deja el logotipo completo en la zona segura
+  circular. Se regeneran sin instalar paquetes con
+  `node scripts/generate-driver-icons.mjs`, usando el `sharp` ya instalado con Next.
+
+### Caché y desconexión
+
+- Cache Storage `recogido-driver-static-v1`: solo offline HTML neutro, iconos,
+  logotipo y recursos `/_next/static/` (incluidas fuentes públicas de Next).
+- Estáticos permitidos sin query: **cache-first**, obtenidos sin credenciales.
+  No guarda respuestas privadas, `no-store`, cookies ni variaciones de autenticación.
+  Máximo 150 recursos estáticos de ejecución, además de los precargados.
+- API, POST, solicitudes con cabeceras de autenticación y demás rutas: **network-only**
+  con `cache: no-store`. Navegación de conductor: red sin caché y, si falla,
+  `/driver/offline.html`. Nunca se precachea el dashboard, sus HTML/RSC ni sus datos.
+- No hay Background Sync, colas ni reintentos de acciones. Offline bloquea ofertas,
+  recogida, completar, disponibilidad y acceso. Cerrar sesión sigue disponible.
+  Los datos de la pestaña abierta se conservan solo en memoria, no en Cache Storage.
+  Una navegación sin red solo muestra la página neutra, sin información operacional.
+- Al reconectar, se refresca inmediatamente el dashboard por GET, sin reenviar POST.
+  Una operación iniciada justo antes de perder red podría haber llegado al servidor:
+  verifique el estado actualizado antes de intentar otra vez.
+- No hay PIN, teléfonos, credenciales ni URLs privadas en el manifest o worker.
+  La autenticación existente conserva el PIN únicamente en la clave de localStorage
+  del piloto y lo envía por `X-Device-Token`; no se copia al worker ni a Cache Storage.
+  Cerrar sesión/401 lo elimina y vuelve al formulario.
+
+### Instalación y actualizaciones
+
+**Android/Chrome:** abra el piloto por HTTPS y presione «INSTALAR APLICACIÓN»
+cuando el navegador lo ofrezca. También puede usar el menú de Chrome → Instalar
+aplicación/Agregar a pantalla de inicio. Cancelar no vuelve a abrir el diálogo.
+
+**iPhone/iPad (Safari):** Compartir → «Agregar a pantalla de inicio» → «Agregar».
+Las instrucciones se pueden cerrar; se recuerda la preferencia en este dispositivo.
+En standalone no se muestra la instalación. El layout conserva las áreas seguras
+superior/inferior y la navegación táctil; no desactiva el zoom.
+
+Si hay una versión esperando, muestra «Hay una nueva versión de Recogido disponible».
+«ACTUALIZAR» activa el worker nuevo y recarga una sola vez. No inicia sesión ni
+repite acciones. Cambie la versión de `CACHE_NAME` en `public/driver/sw.js` cuando
+cambie el shell offline/recursos públicos: `activate` elimina exclusivamente cachés
+antiguas con el prefijo de conductores.
+
+### Validación PWA sin servicios externos
+
+```powershell
+npm run test:pwa
+npm run test:driver
+npm run test:dispatch:adapter
+npm run lint
+npx tsc --noEmit
+npm run build
+node scripts\audit-driver-public.mjs
+```
+
+Las pruebas de worker ejecutan eventos y Cache Storage simulados; todos los fetch
+son locales simulados. La auditoría posterior al build compara bundles públicos,
+HTML/RSC prerenderizados y archivos públicos con la configuración privada local,
+sin imprimir valores ni modificar `.env.local`. El script HTTP legado
+`test:dispatch` necesita un servidor mock; no ejecutarlo contra el backend real.

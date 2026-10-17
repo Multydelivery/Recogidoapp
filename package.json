@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test:dispatch": "node --env-file=.env.local --test tests/dispatch-api.test.mjs",
     "test:dispatch:adapter": "node --import ./tests/register-typescript.mjs --test tests/recogido-api.test.mjs tests/dispatch-terminal.test.mjs",
-    "test:driver": "node --import ./tests/register-typescript.mjs --test tests/driver-demo.test.mjs tests/driver-live.test.mjs"
+    "test:driver": "node --import ./tests/register-typescript.mjs --test tests/driver-demo.test.mjs tests/driver-live.test.mjs",
+    "test:pwa": "node --import ./tests/register-typescript.mjs --test tests/driver-pwa.test.mjs"
   },
   "dependencies": {
     "next": "16.3.6",

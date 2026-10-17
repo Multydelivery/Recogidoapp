@@ -37,6 +37,7 @@
 }
 
 /* Header */
+.connection { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: max(8px, env(safe-area-inset-top)) 16px 8px; background: var(--brand-background); color: var(--brand-text); font-size: 14px; }
 .header { background: var(--brand-secondary); color: var(--brand-background); padding: 12px 16px 14px; padding-top: max(12px, env(safe-area-inset-top)); }
 .headerInner { max-width: 1100px; margin: 0 auto; display: grid; gap: 12px; }
 .brandRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

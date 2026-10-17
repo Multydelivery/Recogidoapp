@@ -4,6 +4,7 @@ class DriverClientError extends Error {
   constructor(public readonly status: number, message: string) { super(message); }
 }
 interface LiveState {
+  online: boolean;
   authenticated: boolean;
   loading: boolean;
   refreshing: boolean;
@@ -13,13 +14,14 @@ interface LiveState {
   refreshedAt: number | null;
 }
 interface Dependencies {
+  online?: () => boolean;
   fetch: typeof fetch;
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">;
   visible: () => boolean;
   setInterval: (callback: () => void, ms: number) => ReturnType<typeof setInterval>;
   clearInterval: (id: ReturnType<typeof setInterval>) => void;
 }
-const initial = (): LiveState => ({ authenticated: false, loading: false, refreshing: false,
+const initial = (): LiveState => ({ online: true, authenticated: false, loading: false, refreshing: false,
   dashboard: null, pending: new Set(), message: "", refreshedAt: null });
 
 export function createDriverLiveController(deps: Dependencies) {
@@ -50,15 +52,22 @@ export function createDriverLiveController(deps: Dependencies) {
   const logout = () => {
     stop();
     token = "";
-    publish(initial());
+    publish({ ...initial(), online: state.online });
     removeToken();
   };
   const fail = (error: unknown) => {
+    if (!state.online) {
+      publish({ message: "Sin conexión. Las acciones están deshabilitadas." });
+      return;
+    }
     const message = error instanceof DriverClientError ? error.message : "No se pudo conectar. Inténtelo nuevamente.";
     if (error instanceof DriverClientError && error.status === 401) logout();
     publish({ message });
   };
   async function api<T>(operation: string, action?: DriverAction): Promise<T> {
+    if (!state.online || deps.online?.() === false) {
+      throw new DriverClientError(0, "Sin conexión. Las acciones están deshabilitadas.");
+    }
     const abort = new AbortController();
     requests.add(abort);
     const timeout = setTimeout(() => abort.abort(), 15_000);
@@ -84,7 +93,7 @@ export function createDriverLiveController(deps: Dependencies) {
     } finally { clearTimeout(timeout); requests.delete(abort); }
   }
   async function refresh() {
-    if (!token || !state.authenticated) return;
+    if (!token || !state.authenticated || !state.online || deps.online?.() === false) return;
     const session = generation;
     const version = ++refreshVersion;
     publish({ refreshing: true });
@@ -99,6 +108,10 @@ export function createDriverLiveController(deps: Dependencies) {
   }
   async function login(pin: string) {
     if (state.loading) return;
+    if (!state.online || deps.online?.() === false) {
+      publish({ message: "Sin conexión. Las acciones están deshabilitadas." });
+      return;
+    }
     stop();
     const session = generation;
     token = pin;
@@ -112,7 +125,7 @@ export function createDriverLiveController(deps: Dependencies) {
       await refresh();
       if (session === generation && state.authenticated) {
         interval = deps.setInterval(() => {
-          if (deps.visible() && !state.refreshing && state.pending.size === 0) void refresh();
+          if (state.online && deps.visible() && !state.refreshing && state.pending.size === 0) void refresh();
         }, 8000);
       }
     } catch (error) {
@@ -120,6 +133,10 @@ export function createDriverLiveController(deps: Dependencies) {
     } finally { if (session === generation) publish({ loading: false }); }
   }
   async function act(action: DriverAction) {
+    if (!state.online || deps.online?.() === false) {
+      publish({ message: "Sin conexión. Las acciones están deshabilitadas." });
+      return;
+    }
     const key = action.action === "set_availability" ? "availability" : action.orderNumber;
     if (!state.authenticated || state.pending.has(key)) return;
     if (action.action === "accept") {
@@ -156,6 +173,12 @@ export function createDriverLiveController(deps: Dependencies) {
         const saved = deps.storage.getItem(driverTokenKey);
         if (saved) await login(saved);
       } catch { publish({ message: "No se pudo acceder al almacenamiento del dispositivo." }); }
+    },
+    setOnline(online: boolean) {
+      if (state.online === online) return;
+      publish({ online, message: online ? "Conexión restaurada" : "Sin conexión. Las acciones están deshabilitadas." });
+      if (online) void refresh();
+      else requests.forEach((request) => request.abort());
     },
     stop, login, logout, refresh, act,
   };

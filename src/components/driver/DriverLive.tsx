@@ -14,6 +14,7 @@ import styles from "./DriverDemo.module.css";
 const titles = { offers: "Ofertas", active: "Entregas activas", history: "Historial" };
 export function DriverLive() {
   const [controller] = useState(() => createDriverLiveController({
+    online: () => navigator.onLine,
     fetch: (...args) => fetch(...args),
     storage: {
       getItem: (key) => window.localStorage.getItem(key),
@@ -27,10 +28,26 @@ export function DriverLive() {
   const [pin, setPin] = useState("");
   const [tab, setTab] = useState<DriverTab>("offers");
   const [confirming, setConfirming] = useState<string | null>(null);
-  useEffect(() => { void controller.start(); return controller.stop; }, [controller]);
+  useEffect(() => {
+    const online = () => controller.setOnline(true);
+    const offline = () => controller.setOnline(false);
+    controller.setOnline(navigator.onLine);
+    void controller.start();
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+      controller.stop();
+    };
+  }, [controller]);
   const dashboard = state.dashboard;
   return (
     <div className={styles.shell}>
+      <div className={styles.connection} role="status" aria-live="polite" aria-atomic="true">
+        <strong>{state.online ? "En línea" : "Sin conexión"}</strong>
+        {!state.online && <span>Sin conexión. Las acciones están deshabilitadas.</span>}
+      </div>
       {!state.authenticated ? (
         <main className={styles.main}>
           <h1 className={styles.panelTitle}>Ingrese el PIN de este conductor</h1>
@@ -42,8 +59,8 @@ export function DriverLive() {
           }}>
             <label htmlFor="driver-pin">PIN</label>
             <input id="driver-pin" type="password" autoComplete="off" maxLength={128}
-              value={pin} onChange={(event) => setPin(event.target.value)} required disabled={state.loading} />
-            <button className={styles.primaryButton} disabled={state.loading}> {state.loading ? "Conectando…" : "Ingresar"}</button>
+              value={pin} onChange={(event) => setPin(event.target.value)} required disabled={state.loading || !state.online} />
+            <button className={styles.primaryButton} disabled={state.loading || !state.online}> {state.loading ? "Conectando…" : "Ingresar"}</button>
           </form>
         </main>
       ) : (
@@ -51,7 +68,7 @@ export function DriverLive() {
           {dashboard && <DriverHeader live firstName={dashboard.driver.name.split(" ")[0]}
             availability={dashboard.driver.available ? "available" : "unavailable"}
             activeCount={dashboard.capacity.used} maxActive={dashboard.capacity.maximum}
-            availabilityDisabled={state.pending.has("availability")}
+            availabilityDisabled={!state.online || state.pending.has("availability")}
             onAvailabilityChange={(value) => void controller.act({ action: "set_availability", available: value === "available" })} />}
           <div className={styles.body}>
             <main className={styles.main} id={`driver-panel-${tab}`} aria-labelledby="driver-panel-title">
@@ -60,7 +77,7 @@ export function DriverLive() {
               }}>Cerrar sesión</button>
               <h2 id="driver-panel-title" className={styles.panelTitle}>{titles[tab]}</h2>
               {state.refreshing && <p className={styles.panelHint}>Actualizando…</p>}
-              {!dashboard && <button className={styles.secondaryButton} onClick={() => void controller.refresh()}>Reintentar carga</button>}
+              {!dashboard && <button className={styles.secondaryButton} disabled={!state.online} onClick={() => void controller.refresh()}>Reintentar carga</button>}
               {tab === "offers" && dashboard && (
                 <ul className={styles.list}>
                   {dashboard.offers.length === 0 && <li className={styles.emptyState}>No hay ofertas disponibles.</li>}
@@ -69,7 +86,7 @@ export function DriverLive() {
                       <OfferCard offer={{ ...offer, offerId: offer.orderNumber, createdAt: offer.createdAt ?? "",
                         status: "available", assignedAt: null, pickedUpAt: null, completedAt: null }}
                         nowMs={state.refreshedAt} loading={state.pending.has(offer.orderNumber)}
-                        actionsDisabled={state.pending.has(offer.orderNumber)} disableBlocked
+                        actionsDisabled={!state.online || state.pending.has(offer.orderNumber)} disableBlocked
                         acceptBlockedReason={!offer.canAccept ? offer.blockReason : undefined}
                         onAccept={() => void controller.act({ action: "accept", orderNumber: offer.orderNumber })}
                         onDecline={() => void controller.act({ action: "decline", orderNumber: offer.orderNumber })} />
@@ -86,7 +103,7 @@ export function DriverLive() {
                         status: delivery.status === "picked_up" ? "picked_up" : "assigned",
                         pickedUpAt: delivery.pickedUpAt ?? null, completedAt: delivery.completedAt ?? null,
                         driverName: dashboard.driver.name }}
-                        loading={state.pending.has(delivery.orderNumber)} disabled={state.pending.has(delivery.orderNumber)}
+                        loading={state.pending.has(delivery.orderNumber)} disabled={!state.online || state.pending.has(delivery.orderNumber)}
                         onConfirmPickup={() => void controller.act({ action: "pickup", orderNumber: delivery.orderNumber })}
                         onRequestCompletion={() => setConfirming(delivery.orderNumber)} />
                     </li>
@@ -118,7 +135,7 @@ export function DriverLive() {
           </div>
           <DriverConfirmDialog open={confirming !== null} title="¿Confirma que entregó el pedido al cliente?"
             description={confirming ?? undefined} confirmLabel="COMPLETAR ENTREGA"
-            busy={confirming !== null && state.pending.has(confirming)} onCancel={() => setConfirming(null)}
+            busy={confirming !== null && state.pending.has(confirming)} confirmDisabled={!state.online} onCancel={() => setConfirming(null)}
             onConfirm={() => {
               if (!confirming) return;
               void controller.act({ action: "complete", orderNumber: confirming });
