@@ -1,5 +1,5 @@
 export const driverOrderPattern = /^#[A-F0-9]{6}(?:-\d{2}|-B)?$/;
-export const driverTokenKey = "recogido:driver-token:maria-elizabeth";
+export const driverTokenKey = (slug: string) => `recogido:driver-token:${slug}`;
 export type LiveStatus = "open" | "claimed" | "assigned" | "picked_up" | "completed" | "closed" | "declined" | "cancelled";
 export interface LiveDriver {
   driverId: string;

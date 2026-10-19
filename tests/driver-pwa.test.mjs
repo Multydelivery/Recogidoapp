@@ -83,7 +83,7 @@ test("driver manifest has exact install contract and metadata stays in driver la
   assert.deepEqual(Object.fromEntries(Object.entries(manifest).filter(([key]) => key !== "icons")), {
     id: "/driver/", name: "Recogido Conductor", short_name: "Recogido",
     description: "Aplicación de entregas para conductores de Recogido",
-    start_url: "/driver/maria-elizabeth", scope: "/driver/", display: "standalone",
+    start_url: "/driver/", scope: "/driver/", display: "standalone",
     orientation: "portrait", theme_color: "#14b8ab", background_color: "#f4f6f9", lang: "es",
   });
   assert.deepEqual(manifest.icons.map(({ sizes, purpose }) => [sizes, purpose]), [
@@ -137,11 +137,16 @@ test("all API, POST, and authenticated requests are network-only and never queue
   const entries = [...sw.stores.values()].reduce((sum, map) => sum + map.size, 0);
   for (const [path, options] of [
     ["/api/driver/maria-elizabeth/dashboard", {}],
+    ["/api/driver/patricia-castaneda/config", { headers: { "X-Device-Token": "synthetic-patricia" } }],
+    ["/api/driver/patricia-castaneda/dashboard", {}],
     ["/api/dispatch/config", {}],
     ["/api/driver/maria-elizabeth/action", { method: "POST", body: '{"action":"accept"}' }],
     ["/_next/static/private.js", { headers: { "X-Device-Token": "synthetic-pin" } }],
     ["/driver/icons/icon-192.png", { headers: { Authorization: "synthetic-auth" } }],
     ["/driver/maria-elizabeth", {}],
+    ["/api/driver/patricia-castaneda/action", { method: "POST", body: '{"action":"set_availability","available":false}' }],
+    ["/driver/patricia-castaneda", {}],
+    ["/driver/patricia-castaneda?_rsc=synthetic", {}],
   ]) {
     await sw.fetch(path, options);
     assert.equal(sw.calls.at(-1).init.cache, "no-store");
@@ -185,13 +190,16 @@ test("static assets cache-first without credentials; private/no-store responses 
 test("offline navigation returns only the neutral offline document, never cached dashboard data", async () => {
   const sw = workerHarness();
   await sw.lifecycle("install");
-  await sw.fetch("/driver/maria-elizabeth", { navigate: true });
-  sw.offline(true);
-  const offline = await sw.fetch("/driver/maria-elizabeth", { navigate: true });
-  assert.equal(await offline.text(), "/driver/offline.html");
-  assert.equal((await sw.fetch("/api/driver/maria-elizabeth/dashboard")).status, 503);
+  for (const slug of ["maria-elizabeth", "patricia-castaneda"]) {
+    sw.offline(false);
+    await sw.fetch(`/driver/${slug}`, { navigate: true });
+    sw.offline(true);
+    const offline = await sw.fetch(`/driver/${slug}`, { navigate: true });
+    assert.equal(await offline.text(), "/driver/offline.html");
+    assert.equal((await sw.fetch(`/api/driver/${slug}/dashboard`)).status, 503);
+  }
   for (const store of sw.stores.values()) {
-    assert.ok([...store.keys()].every((key) => !key.includes("/api/") && !key.includes("maria-elizabeth")));
+    assert.ok([...store.keys()].every((key) => !key.includes("/api/") && !key.includes("maria-elizabeth") && !key.includes("patricia-castaneda")));
   }
   const html = await readFile(new URL("../public/driver/offline.html", import.meta.url), "utf8");
   for (const message of ["Sin conexión", "Conéctese a internet para consultar o actualizar sus entregas.",
@@ -205,7 +213,7 @@ test("offline controller preserves current data, blocks all actions, reconnects 
   const dashboard = { success: true, driver: { name: "Maria Elizabeth", available: true }, offers: [{ orderNumber: "#ABCDEF-01", canAccept: true }],
     activeDeliveries: [], history: [], capacity: { used: 0, maximum: 3, remaining: 3 } };
   let online = true;
-  const controller = createDriverLiveController({
+  const controller = createDriverLiveController("maria-elizabeth", {
     online: () => online, visible: () => true,
     storage: { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) },
     fetch: async (url, init) => { calls.push({ url, init }); return Response.json(url.endsWith("config") ? { success: true } : dashboard); },
@@ -231,7 +239,7 @@ test("offline controller preserves current data, blocks all actions, reconnects 
   assert.equal(calls.at(-1).init.method, "GET");
   assert.equal(controller.getSnapshot().message, "Conexión restaurada");
   controller.logout();
-  assert.equal(storage.has(driverTokenKey), false);
+  assert.equal(storage.has(driverTokenKey("maria-elizabeth")), false);
   assert.equal(controller.getSnapshot().authenticated, false);
   assert.equal(controller.getSnapshot().dashboard, null);
 });

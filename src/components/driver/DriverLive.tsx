@@ -12,8 +12,8 @@ import { ActiveDeliveryCard } from "./ActiveDeliveryCard";
 import styles from "./DriverDemo.module.css";
 
 const titles = { offers: "Ofertas", active: "Entregas activas", history: "Historial" };
-export function DriverLive() {
-  const [controller] = useState(() => createDriverLiveController({
+export function DriverLive({ slug }: { slug: string }) {
+  const [controller] = useState(() => createDriverLiveController(slug, {
     online: () => navigator.onLine,
     fetch: (...args) => fetch(...args),
     storage: {
@@ -65,7 +65,7 @@ export function DriverLive() {
         </main>
       ) : (
         <>
-          {dashboard && <DriverHeader live firstName={dashboard.driver.name.split(" ")[0]}
+          {dashboard && <DriverHeader live firstName={dashboard.driver.name}
             availability={dashboard.driver.available ? "available" : "unavailable"}
             activeCount={dashboard.capacity.used} maxActive={dashboard.capacity.maximum}
             availabilityDisabled={!state.online || state.pending.has("availability")}

@@ -5,10 +5,10 @@ import { driverOrderPattern, type DriverAction } from "../live-types";
 import { authenticateDriver, DriverError, driverErrorMessage } from "./config";
 import { callDriverTwilio } from "./twilio";
 
-export async function driverApi(request: Request, operation: "config" | "dashboard" | "action") {
+export async function driverApi(request: Request, operation: "config" | "dashboard" | "action", slug: string) {
   try {
-    authenticateDriver(request);
-    rateLimit(request, `driver:${operation}`, operation === "action" ? 60 : 120, 60_000);
+    const profile = authenticateDriver(request, slug);
+    rateLimit(request, `driver:${profile.slug}:${operation}`, operation === "action" ? 60 : 120, 60_000);
     let action: DriverAction | undefined;
     if (operation === "action") {
       const body = await readBody(request, ["action", "orderNumber", "available"]);
@@ -19,11 +19,12 @@ export async function driverApi(request: Request, operation: "config" | "dashboa
         action = { action: body.action, orderNumber: body.orderNumber };
       } else throw new DriverError(400, "INVALID_ACTION");
     }
-    return json(await callDriverTwilio(operation, action));
+    return json(await callDriverTwilio(profile, operation, action));
   } catch (error) {
     const status = error instanceof DispatchError ? error.statusCode : 502;
     if (!(error instanceof DispatchError)) console.error("Unexpected driver API failure");
     return json({ success: false, code: error instanceof DriverError ? error.code : "DRIVER_ERROR",
-      error: driverErrorMessage(status) }, status);
+      error: error instanceof DriverError && error.code === "DRIVER_NOT_FOUND"
+        ? "Conductor no autorizado" : driverErrorMessage(status) }, status);
   }
 }

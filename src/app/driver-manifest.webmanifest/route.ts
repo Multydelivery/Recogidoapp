@@ -6,7 +6,7 @@ export function GET() {
     name: "Recogido Conductor",
     short_name: "Recogido",
     description: "Aplicación de entregas para conductores de Recogido",
-    start_url: "/driver/maria-elizabeth",
+    start_url: "/driver/",
     scope: "/driver/",
     display: "standalone",
     orientation: "portrait",

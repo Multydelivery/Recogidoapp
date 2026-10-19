@@ -1,7 +1,7 @@
 import { driverTokenKey, type DriverAction, type LiveConfig, type LiveDashboard } from "./live-types";
 
 class DriverClientError extends Error {
-  constructor(public readonly status: number, message: string) { super(message); }
+  constructor(public readonly status: number, message: string, public readonly code?: string) { super(message); }
 }
 interface LiveState {
   online: boolean;
@@ -24,7 +24,8 @@ interface Dependencies {
 const initial = (): LiveState => ({ online: true, authenticated: false, loading: false, refreshing: false,
   dashboard: null, pending: new Set(), message: "", refreshedAt: null });
 
-export function createDriverLiveController(deps: Dependencies) {
+export function createDriverLiveController(slug: string, deps: Dependencies) {
+  const tokenKey = driverTokenKey(slug);
   let state = initial();
   let token = "";
   let generation = 0;
@@ -37,7 +38,7 @@ export function createDriverLiveController(deps: Dependencies) {
     listeners.forEach((listener) => listener());
   };
   const removeToken = () => {
-    try { deps.storage.removeItem(driverTokenKey); }
+    try { deps.storage.removeItem(tokenKey); }
     catch { publish({ message: "No se pudo borrar el PIN del dispositivo. Borre los datos del sitio." }); }
   };
   const stop = () => {
@@ -61,7 +62,8 @@ export function createDriverLiveController(deps: Dependencies) {
       return;
     }
     const message = error instanceof DriverClientError ? error.message : "No se pudo conectar. Inténtelo nuevamente.";
-    if (error instanceof DriverClientError && error.status === 401) logout();
+    if (error instanceof DriverClientError &&
+      (error.status === 401 || error.status === 403 || error.code === "DRIVER_NOT_FOUND")) logout();
     publish({ message });
   };
   async function api<T>(operation: string, action?: DriverAction): Promise<T> {
@@ -72,15 +74,18 @@ export function createDriverLiveController(deps: Dependencies) {
     requests.add(abort);
     const timeout = setTimeout(() => abort.abort(), 15_000);
     try {
-      const response = await deps.fetch(`/api/driver/maria-elizabeth/${operation}`, {
+      const response = await deps.fetch(`/api/driver/${encodeURIComponent(slug)}/${operation}`, {
         method: action ? "POST" : "GET", cache: "no-store", signal: abort.signal,
         headers: { "X-Device-Token": token, ...(action ? { "Content-Type": "application/json" } : {}) },
         ...(action ? { body: JSON.stringify(action) } : {}),
       });
-      const data = await response.json();
+      const data: unknown = await response.json();
       if (!response.ok) {
+        if (data && typeof data === "object" && "code" in data && data.code === "DRIVER_NOT_FOUND") {
+          throw new DriverClientError(response.status, "Conductor no autorizado", "DRIVER_NOT_FOUND");
+        }
         const messages: Record<number, string> = {
-          401: "PIN incorrecto. Inténtelo nuevamente.", 403: "Conductor no habilitado.",
+          401: "PIN incorrecto. Inténtelo nuevamente.", 403: "Conductor no autorizado",
           404: "El pedido ya no está disponible.",
           409: "Conflicto de capacidad, restaurante o pedido tomado. Se actualizarán las ofertas.",
           502: "Twilio no pudo completar la operación. Inténtelo nuevamente.",
@@ -119,7 +124,7 @@ export function createDriverLiveController(deps: Dependencies) {
     try {
       await api<LiveConfig>("config");
       if (session !== generation) return;
-      try { deps.storage.setItem(driverTokenKey, pin); }
+      try { deps.storage.setItem(tokenKey, pin); }
       catch { throw new DriverClientError(0, "No se pudo guardar el PIN en este dispositivo."); }
       publish({ authenticated: true });
       await refresh();
@@ -170,7 +175,7 @@ export function createDriverLiveController(deps: Dependencies) {
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     async start() {
       try {
-        const saved = deps.storage.getItem(driverTokenKey);
+        const saved = deps.storage.getItem(tokenKey);
         if (saved) await login(saved);
       } catch { publish({ message: "No se pudo acceder al almacenamiento del dispositivo." }); }
     },
