@@ -1,0 +1,377 @@
+.hero {
+  position: relative;
+  margin-bottom: 50px;
+}
+
+.heroVisual {
+  position: relative;
+  min-height: 380px;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 78% 22%, rgb(255 218 132 / 75%), transparent 30%),
+    radial-gradient(ellipse at 20% 76%, rgb(188 92 43 / 58%), transparent 38%),
+    linear-gradient(125deg, #254d4b 0%, #8a5738 53%, #d79b45 100%);
+}
+
+.heroVisual[data-image-loading="true"] {
+  background-size: 180% 180%;
+  animation: hero-placeholder-shimmer 1.8s ease-in-out infinite alternate;
+}
+
+.heroImage {
+  z-index: 0;
+  object-fit: cover;
+  object-position: center;
+}
+
+.placeholder {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: white;
+}
+
+.placeholderIcon {
+  display: grid;
+  width: 88px;
+  height: 88px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 38%);
+  border-radius: 28px;
+  background: rgb(13 39 72 / 23%);
+  backdrop-filter: blur(5px);
+}
+
+.placeholderIcon svg {
+  width: 46px;
+  height: 46px;
+  stroke-width: 1.4;
+}
+
+.placeholderCaption {
+  color: rgb(255 255 255 / 90%);
+  font-size: 12px;
+  font-weight: 650;
+  text-shadow: 0 1px 5px rgb(13 39 72 / 55%);
+}
+
+.loadingStatus {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 16px;
+  color: white;
+  font-size: 12px;
+  text-shadow: 0 1px 5px rgb(13 39 72 / 55%);
+}
+
+.imageOverlay {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgb(13 39 72 / 4%) 0%,
+    rgb(13 39 72 / 8%) 35%,
+    rgb(13 39 72 / 78%) 100%
+  );
+}
+
+.heroContent {
+  position: absolute;
+  z-index: 2;
+  right: 24px;
+  bottom: 46px;
+  left: 24px;
+  color: white;
+}
+
+.deliveryBadge {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgb(255 255 255 / 32%);
+  border-radius: 999px;
+  background: rgb(13 39 72 / 42%);
+  padding: 4px 10px;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  backdrop-filter: blur(8px);
+}
+
+.deliveryBadge svg {
+  width: 17px;
+  height: 17px;
+}
+
+.heroContent h1 {
+  max-width: 720px;
+  margin-top: 10px;
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 850;
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.heroContent > p {
+  margin-top: 6px;
+  color: rgb(255 255 255 / 92%);
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.heroContent > p span {
+  padding: 0 3px;
+  color: #ffd27b;
+}
+
+.addressButton {
+  position: absolute;
+  z-index: 1;
+  right: 16px;
+  bottom: -28px;
+  left: 16px;
+  display: flex;
+  width: min(calc(100% - 32px), 680px);
+  min-height: 60px;
+  align-items: center;
+  gap: 12px;
+  margin: auto;
+  border: 1px solid rgb(13 39 72 / 10%);
+  border-radius: 16px;
+  background: white;
+  padding: 9px 15px;
+  box-shadow: 0 10px 28px rgb(13 39 72 / 18%);
+  color: var(--color-navy);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 150ms, transform 150ms, border-color 150ms;
+}
+
+.addressButton:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-blue) 50%, white);
+  box-shadow: 0 13px 32px rgb(13 39 72 / 21%);
+}
+
+.addressButton:active {
+  transform: scale(0.99);
+}
+
+.addressButton:focus-visible,
+.addressDialog button:focus-visible {
+  outline: 3px solid var(--color-blue-dark);
+  outline-offset: 3px;
+}
+
+.locationIcon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 12px;
+  background: #e8f7f4;
+  color: #087d73;
+}
+
+.locationIcon svg,
+.dialogIcon svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.addressButtonText {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+}
+
+.addressButtonText strong {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.addressButtonText > span {
+  overflow: hidden;
+  color: #52647a;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.addressArrow {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  fill: none;
+  stroke: #52647a;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.addressDialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  width: min(calc(100% - 32px), 420px);
+  transform: translate(-50%, -50%);
+  border: 1px solid rgb(13 39 72 / 12%);
+  border-radius: 20px;
+  background: white;
+  padding: 28px;
+  color: var(--color-navy);
+  box-shadow: 0 22px 70px rgb(13 39 72 / 28%);
+}
+
+.addressDialog::backdrop {
+  background: rgb(13 39 72 / 58%);
+  backdrop-filter: blur(3px);
+}
+
+.dialogIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 15px;
+  background: #e8f7f4;
+  color: #087d73;
+}
+
+.addressDialog h2 {
+  margin-top: 16px;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.addressDialog p {
+  margin-top: 8px;
+  color: #52647a;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.addressDialog button {
+  min-width: 112px;
+  min-height: 46px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-navy);
+  padding: 0 20px;
+  color: white;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+@keyframes hero-placeholder-shimmer {
+  from { background-position: 0% 50%; }
+  to { background-position: 100% 50%; }
+}
+
+@media (min-width: 801px) and (max-width: 1100px) {
+  .heroVisual {
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 800px) {
+  .hero {
+    width: calc(100% + 32px);
+    margin: -22px -16px 50px;
+  }
+
+  .heroVisual {
+    min-height: 300px;
+    border-radius: 0 0 18px 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .hero {
+    width: calc(100% + 24px);
+    margin: -16px -12px 48px;
+  }
+
+  .heroVisual {
+    min-height: 240px;
+    border-radius: 0 0 16px 16px;
+  }
+
+  .heroContent {
+    right: 17px;
+    bottom: 43px;
+    left: 17px;
+  }
+
+  .heroContent h1 {
+    max-width: 320px;
+    font-size: clamp(28px, 8.2vw, 32px);
+  }
+
+  .heroContent > p {
+    font-size: 12px;
+  }
+
+  .deliveryBadge {
+    min-height: 27px;
+    font-size: 10px;
+  }
+
+  .placeholderIcon {
+    width: 68px;
+    height: 68px;
+    border-radius: 22px;
+  }
+
+  .placeholderIcon svg {
+    width: 38px;
+    height: 38px;
+  }
+
+  .addressButton {
+    right: 16px;
+    bottom: -27px;
+    left: 16px;
+    width: calc(100% - 32px);
+    min-height: 58px;
+    gap: 9px;
+    border-radius: 15px;
+    padding: 8px 11px;
+  }
+
+  .addressButtonText strong {
+    font-size: 13px;
+  }
+
+  .addressButtonText > span {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroVisual[data-image-loading="true"] {
+    animation: none;
+  }
+
+  .addressButton {
+    transition: none;
+  }
+}

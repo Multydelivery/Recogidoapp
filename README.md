@@ -105,6 +105,66 @@ same mock contracts and keeps the public marketing page unchanged.
 Both paths run without Twilio, Make, or other external APIs while
 `DISPATCH_MOCK_MODE=true`.
 
+## 11. Public restaurant ordering demo
+
+The public menu demonstration is available at
+`/order/la-fonda-paisa`. Its static catalog lives in
+`src/data/la-fonda-paisa-menu.json` and contains **27 products** in eight categories.
+The public-menu review and reusable modifier templates are in
+`src/data/la-fonda-paisa-modifiers-phase-1.json`; the ordering page resolves
+each product's `modifierGroupRefs` against shared templates without copying
+the groups.
+
+Bandeja Paisa, Paisita, Especial de crema de pollo, and Especial de sopa de
+mondongo are configurable. Picada remains direct-add. All four configurable
+dishes can have optional sides, desserts, beverages, and special instructions;
+the bandejas require a protein, and both soups require size, rice, and a salad
+or beans. Soup prices use $12.35 as the 1,235-cent base and add 260 cents for
+Grande, for an exact $14.95 total.
+
+The phase-1 prices and options were publicly observed on DoorDash on October
+19, 2026 (`publiclyVerified: true`, `merchantConfirmed: false`). Internal note:
+La Fonda Paisa must confirm all prices before any real ordering capability is
+considered. This demo does not accept real orders or payments and makes no
+external service requests.
+
+The browser cart is stored under `recogido:cart:la-fonda-paisa` using schema
+version 2. If the new key is absent, the first read validates `recogido:cart`,
+retains only La Fonda product IDs, writes valid lines to the new key, and
+records a one-time migration marker. The old key is left untouched; later
+reads never import it again. Invalid lines and corrupt JSON are discarded
+without breaking the page. Cart lines retain product ID, quantity, selected
+modifier snapshots, configured unit price in cents, special instructions, and
+a deterministic configuration key.
+
+This remains a demonstration only. It does not submit orders, process payments,
+or contact the restaurant. Address details exist only in page memory while the
+checkout is open and are cleared when leaving or completing it; they are never
+stored or sent to a server. The checkout clearly states that no order will be
+sent.
+
+Run `npm run dev` and open
+[http://localhost:3000/order/la-fonda-paisa](http://localhost:3000/order/la-fonda-paisa).
+Run the focused menu and cart tests with:
+
+```bash
+npm run test:ordering
+```
+
+The menu's fixed **Continuar con La Fonda** bar opens the four-step demo
+checkout at `/order/la-fonda-paisa/checkout`. It reuses the version-2 cart and
+existing modifier/pricing logic. Delivery details stay in component memory only:
+they are not placed in the URL, written to browser storage, logged, or sent to
+an API. The final review shows the food subtotal as a partial total while
+service fee, delivery fee, and tax remain explicitly pending until approved
+values are configured. The last step creates only a local demonstration
+confirmation; it does not submit an order or process payment. No payment fields
+or provider integrations are included.
+
+Before a future live-ordering phase, obtain restaurant approval for the catalog,
+then design and implement the required order submission, fulfillment, payment,
+and privacy workflows. None of those live capabilities are enabled here.
+
 ## Legal notice
 
 The Privacy Policy and Terms of Service sections included on this site are a general starting point only. **Have them reviewed by a qualified attorney before a production launch.**

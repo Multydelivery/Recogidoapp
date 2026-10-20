@@ -1,0 +1,539 @@
+{
+  "schemaVersion": 1,
+  "status": "demo",
+  "restaurant": {
+    "id": "la-fonda-paisa",
+    "name": "La Fonda Paisa",
+    "cuisine": "Colombiana",
+    "address": {
+      "street": "95 West Palisade Avenue",
+      "city": "Englewood",
+      "state": "NJ",
+      "country": "US"
+    },
+    "phone": "+12018713544",
+    "currency": "USD"
+  },
+  "categories": [
+    {
+      "id": "popular",
+      "nameEs": "Más populares",
+      "nameEn": "Most Popular",
+      "sortOrder": 1
+    },
+    {
+      "id": "sopas-lunes",
+      "nameEs": "Sopas especiales de los lunes",
+      "nameEn": "Monday soup specials",
+      "sortOrder": 2
+    },
+    {
+      "id": "antojitos",
+      "nameEs": "Antojitos",
+      "nameEn": "Cravings",
+      "sortOrder": 3
+    },
+    {
+      "id": "res",
+      "nameEs": "Carne de res",
+      "nameEn": "Beef",
+      "sortOrder": 4
+    },
+    {
+      "id": "cerdo",
+      "nameEs": "Carne de cerdo",
+      "nameEn": "Pork",
+      "sortOrder": 5
+    },
+    {
+      "id": "pollo",
+      "nameEs": "Pollo",
+      "nameEn": "Chicken",
+      "sortOrder": 6
+    },
+    {
+      "id": "mariscos",
+      "nameEs": "Pescados y mariscos",
+      "nameEn": "Fish and Seafood",
+      "sortOrder": 7
+    },
+    {
+      "id": "postres-bebidas",
+      "nameEs": "Postres y bebidas",
+      "nameEn": "Desserts and Drinks",
+      "sortOrder": 8
+    }
+  ],
+  "items": [
+    {
+      "id": "lfp-001-bandeja-paisa",
+      "categoryId": "popular",
+      "nameEs": "Bandeja Paisa",
+      "nameEn": "Paisa Tray",
+      "description": "",
+      "price": 28.6,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-002-paisita",
+      "categoryId": "popular",
+      "nameEs": "Paisita",
+      "nameEn": "Little Paisa Platter",
+      "description": "",
+      "price": 20.8,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-003-picada",
+      "categoryId": "popular",
+      "nameEs": "Picada",
+      "nameEn": "Sampler",
+      "description": "",
+      "price": 41.6,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-004-bandeja-a-la-fonda-paisa",
+      "categoryId": "popular",
+      "nameEs": "Bandeja a la Fonda Paisa",
+      "nameEn": "Fonda Style Paisa Tray",
+      "description": "",
+      "price": 27.95,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-005-empanadas",
+      "categoryId": "antojitos",
+      "nameEs": "Empanadas",
+      "nameEn": "Beef Patties",
+      "description": "",
+      "price": 2.28,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-006-arepa-de-chocolo-con-queso",
+      "categoryId": "antojitos",
+      "nameEs": "Arepa de chocolo con queso",
+      "nameEn": "Sweet Yellow Corn Cake with Cheese",
+      "description": "",
+      "price": 5.2,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-007-arepa-con-queso",
+      "categoryId": "antojitos",
+      "nameEs": "Arepa con queso",
+      "nameEn": "Corn Cake with Cheese",
+      "description": "",
+      "price": 3.58,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-008-bunuelo",
+      "categoryId": "antojitos",
+      "nameEs": "Buñuelo",
+      "nameEn": "Cheese Ball",
+      "description": "",
+      "price": 1.95,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-009-chicharron-con-arepita",
+      "categoryId": "antojitos",
+      "nameEs": "Chicharrón con arepita",
+      "nameEn": "Crispy Pork Belly with Corn Cake",
+      "description": "",
+      "price": 7.8,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-010-chorizo-con-arepita",
+      "categoryId": "antojitos",
+      "nameEs": "Chorizo con arepita",
+      "nameEn": "Sausage with Corn Cake",
+      "description": "",
+      "price": 4.88,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-011-morcilla-con-arepita",
+      "categoryId": "antojitos",
+      "nameEs": "Morcilla con arepita",
+      "nameEn": "Blood Sausage with Corn Cake",
+      "description": "",
+      "price": 7.48,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-012-tamal-con-arepa",
+      "categoryId": "antojitos",
+      "nameEs": "Tamal con arepa",
+      "nameEn": "Tamale with Corn Cake",
+      "description": "",
+      "price": 10.4,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-013-carne-asada",
+      "categoryId": "res",
+      "nameEs": "Carne asada",
+      "nameEn": "Grilled Beef",
+      "description": "",
+      "price": 20.15,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-014-bistec-a-caballo",
+      "categoryId": "res",
+      "nameEs": "Bistec a caballo",
+      "nameEn": "Beef Steak with Egg",
+      "description": "",
+      "price": 26,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-015-lengua-en-salsa",
+      "categoryId": "res",
+      "nameEs": "Lengua en salsa",
+      "nameEn": "Beef Tongue in Sauce",
+      "description": "",
+      "price": 20.8,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-016-chuleta-apanada",
+      "categoryId": "cerdo",
+      "nameEs": "Chuleta apanada",
+      "nameEn": "Breaded Pork Cutlet",
+      "description": "",
+      "price": 20.15,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-017-lomo-de-cerdo-a-la-plancha",
+      "categoryId": "cerdo",
+      "nameEs": "Lomo de cerdo a la plancha",
+      "nameEn": "Grilled Pork Loin",
+      "description": "",
+      "price": 20.15,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-018-pechuga-a-la-plancha",
+      "categoryId": "pollo",
+      "nameEs": "Pechuga a la plancha",
+      "nameEn": "Grilled Chicken Breast",
+      "description": "",
+      "price": 17.55,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-019-pechuga-en-salsa-de-champinones",
+      "categoryId": "pollo",
+      "nameEs": "Pechuga en salsa de champiñones",
+      "nameEn": "Chicken Breast with Mushroom Sauce",
+      "description": "",
+      "price": 22.1,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-020-pollo-relleno-de-jamon-y-queso-en-salsa",
+      "categoryId": "pollo",
+      "nameEs": "Pollo relleno de jamón y queso en salsa",
+      "nameEn": "Chicken Stuffed with Ham and Cheese in Sauce",
+      "description": "",
+      "price": 22.75,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-021-medio-pollo",
+      "categoryId": "pollo",
+      "nameEs": "Medio pollo",
+      "nameEn": "Half Chicken",
+      "description": "",
+      "price": 11.7,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-022-pargo-rojo-frito",
+      "categoryId": "mariscos",
+      "nameEs": "Pargo rojo frito",
+      "nameEn": "Fried Red Snapper",
+      "description": "",
+      "price": 27.3,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-023-cazuela-mixta",
+      "categoryId": "mariscos",
+      "nameEs": "Cazuela mixta",
+      "nameEn": "Mixed Seafood Casserole",
+      "description": "",
+      "price": 23.4,
+      "currency": "USD",
+      "available": true,
+      "featured": false,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-024-tres-leches",
+      "categoryId": "postres-bebidas",
+      "nameEs": "Tres leches",
+      "nameEn": "Three Milk Cake",
+      "description": "",
+      "price": 5.53,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-025-maracuya",
+      "categoryId": "postres-bebidas",
+      "nameEs": "Maracuyá",
+      "nameEn": "Passion Fruit Drink",
+      "description": "",
+      "price": 6.5,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19"
+      }
+    },
+    {
+      "id": "lfp-027-especial-crema-pollo",
+      "categoryId": "sopas-lunes",
+      "nameEs": "Especial de crema de pollo",
+      "nameEn": "Cream of Chicken Special",
+      "description": "",
+      "price": 12.35,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19",
+        "priceLabel": "Desde $12.35",
+        "publiclyVerified": true,
+        "merchantConfirmed": false
+      }
+    },
+    {
+      "id": "lfp-026-especial-sopa-mondongo",
+      "categoryId": "sopas-lunes",
+      "nameEs": "Especial de sopa de mondongo",
+      "nameEn": "Tripe Soup Special",
+      "description": "",
+      "price": 12.35,
+      "currency": "USD",
+      "available": true,
+      "featured": true,
+      "imageUrl": null,
+      "modifierGroups": [],
+      "source": {
+        "provider": "DoorDash",
+        "extractedAt": "2026-10-19",
+        "priceLabel": "Desde $12.35",
+        "publiclyVerified": true,
+        "merchantConfirmed": false
+      }
+    }
+  ],
+  "notes": [
+    "Catálogo de demostración con 27 productos.",
+    "Nota interna: los precios observados en DoorDash el 19 de octubre de 2026 deben ser confirmados por La Fonda Paisa antes de aceptar pedidos reales.",
+    "Este archivo no debe activar pedidos ni pagos reales."
+  ]
+}

@@ -265,6 +265,11 @@ $env:TWILIO_WEB_AUTH_PASSWORD = 'synthetic-password'
 npm run start -- --port 3107
 ```
 
+Para la prueba HTTP, mantén el perfil `inactive-driver` en `DRIVERS_JSON` con
+`active:false`: un perfil existente pero inactivo devuelve 403, mientras que
+uno omitido devuelve 404. Ambas respuestas usan el mismo mensaje público
+genérico.
+
 En otra terminal:
 
 ```powershell

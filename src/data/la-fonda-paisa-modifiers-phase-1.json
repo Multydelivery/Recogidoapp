@@ -1,0 +1,322 @@
+{
+  "schemaVersion": 1,
+  "status": "public-menu-review-required",
+  "restaurantId": "la-fonda-paisa",
+  "currency": "USD",
+  "extractedAt": "2026-10-19",
+  "source": {
+    "provider": "DoorDash",
+    "publiclyVerified": true,
+    "merchantConfirmed": false,
+    "storeUrl": "https://www.doordash.com/store/la-fonda-paisa-englewood-27802976/34693746/",
+    "method": "Visible public item configuration dialogs",
+    "notes": [
+      "Prices and availability must be confirmed with La Fonda Paisa before accepting real orders.",
+      "DoorDash displays soup size prices as full option prices. This file normalizes Medium as the base price and Large as a $2.60 adjustment.",
+      "Recommended groups are modeled as optional groups with a maximum of five selections.",
+      "Picada opened as a direct-add item and did not present modifier groups during this review."
+    ]
+  },
+  "modifierGroupTemplates": {
+    "protein-choice": {
+      "nameEs": "Elección de proteína",
+      "nameEn": "Protein choice",
+      "required": true,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "id": "chicken-breast",
+          "nameEs": "Pechuga",
+          "nameEn": "Chicken breast",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "pork-loin",
+          "nameEs": "Lomo de cerdo",
+          "nameEn": "Pork loin",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "grilled-beef",
+          "nameEs": "Carne de res",
+          "nameEn": "Grilled beef",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "ground-beef",
+          "nameEs": "Carne molida",
+          "nameEn": "Ground beef",
+          "priceAdjustmentCents": 260
+        }
+      ]
+    },
+    "soup-special-size": {
+      "nameEs": "Tamaño del especial de sopa",
+      "nameEn": "Soup special size",
+      "required": true,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "id": "medium",
+          "nameEs": "Mediana",
+          "nameEn": "Medium",
+          "priceAdjustmentCents": 0,
+          "sourceFullPriceCents": 1235
+        },
+        {
+          "id": "large",
+          "nameEs": "Grande",
+          "nameEn": "Large",
+          "priceAdjustmentCents": 260,
+          "sourceFullPriceCents": 1495
+        }
+      ]
+    },
+    "rice-choice": {
+      "nameEs": "Elección de arroz",
+      "nameEn": "Rice choice",
+      "required": true,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "id": "rice",
+          "nameEs": "Arroz",
+          "nameEn": "Rice",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "no-rice",
+          "nameEs": "Sin arroz",
+          "nameEn": "No rice",
+          "priceAdjustmentCents": 0
+        }
+      ]
+    },
+    "salad-choice": {
+      "nameEs": "Elección de ensalada o frijoles",
+      "nameEn": "Salad or beans choice",
+      "required": true,
+      "minSelections": 1,
+      "maxSelections": 1,
+      "options": [
+        {
+          "id": "green-salad",
+          "nameEs": "Ensalada verde",
+          "nameEn": "Green salad",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "beet-carrot-salad",
+          "nameEs": "Ensalada de remolacha con zanahoria",
+          "nameEn": "Beet salad with carrot",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "beans",
+          "nameEs": "Frijoles",
+          "nameEn": "Beans",
+          "priceAdjustmentCents": 0
+        },
+        {
+          "id": "no-salad-or-beans",
+          "nameEs": "Sin frijoles ni ensalada",
+          "nameEn": "No salad or beans",
+          "priceAdjustmentCents": 0
+        }
+      ]
+    },
+    "recommended-sides-apps": {
+      "nameEs": "Acompañamientos y aperitivos recomendados",
+      "nameEn": "Recommended sides and apps",
+      "required": false,
+      "minSelections": 0,
+      "maxSelections": 5,
+      "options": [
+        {
+          "id": "empanadas",
+          "nameEs": "Empanadas",
+          "nameEn": "Beef patties",
+          "priceAdjustmentCents": 228
+        },
+        {
+          "id": "tostones",
+          "nameEs": "Tostones",
+          "nameEn": "Fried green plantains",
+          "priceAdjustmentCents": 455
+        },
+        {
+          "id": "extra-beans",
+          "nameEs": "Frijoles",
+          "nameEn": "Beans",
+          "priceAdjustmentCents": 455
+        },
+        {
+          "id": "chicharron-arepita",
+          "nameEs": "Chicharrón con arepita",
+          "nameEn": "Crispy pork belly with corn cake",
+          "priceAdjustmentCents": 780
+        },
+        {
+          "id": "madurito",
+          "nameEs": "Orden de madurito",
+          "nameEn": "Order of fried sweet plantains",
+          "priceAdjustmentCents": 520
+        }
+      ]
+    },
+    "recommended-desserts": {
+      "nameEs": "Postres recomendados",
+      "nameEn": "Recommended desserts",
+      "required": false,
+      "minSelections": 0,
+      "maxSelections": 5,
+      "options": [
+        {
+          "id": "caramel-flan",
+          "nameEs": "Flan de caramelo",
+          "nameEn": "Caramel flan",
+          "priceAdjustmentCents": 488
+        },
+        {
+          "id": "tres-leches",
+          "nameEs": "Tres leches",
+          "nameEn": "Three milk cake",
+          "priceAdjustmentCents": 553
+        },
+        {
+          "id": "chunchurria",
+          "nameEs": "Chunchurria",
+          "nameEn": "Crispy golden tripe",
+          "priceAdjustmentCents": 1170
+        },
+        {
+          "id": "arepa-chocolo-cheese",
+          "nameEs": "Arepa de chocolo con queso",
+          "nameEn": "Sweet yellow corn cake with cheese",
+          "priceAdjustmentCents": 520
+        },
+        {
+          "id": "arepa-chocolo",
+          "nameEs": "Arepa de chocolo",
+          "nameEn": "Sweet yellow corn cake",
+          "priceAdjustmentCents": 390
+        }
+      ]
+    },
+    "recommended-beverages": {
+      "nameEs": "Bebidas recomendadas",
+      "nameEn": "Recommended beverages",
+      "required": false,
+      "minSelections": 0,
+      "maxSelections": 5,
+      "options": [
+        {
+          "id": "coca-cola",
+          "nameEs": "Coca-Cola",
+          "nameEn": "Coke",
+          "priceAdjustmentCents": 260
+        },
+        {
+          "id": "postobon",
+          "nameEs": "Gaseosa Postobón",
+          "nameEn": "Colombian soda",
+          "priceAdjustmentCents": 293
+        },
+        {
+          "id": "mango",
+          "nameEs": "Mango",
+          "nameEn": "Mango",
+          "priceAdjustmentCents": 650
+        },
+        {
+          "id": "large-cafe-con-leche",
+          "nameEs": "Café con leche grande",
+          "nameEn": "Large café con leche",
+          "priceAdjustmentCents": 390
+        },
+        {
+          "id": "sprite",
+          "nameEs": "Sprite",
+          "nameEn": "Sprite",
+          "priceAdjustmentCents": 260
+        }
+      ]
+    }
+  },
+  "items": [
+    {
+      "id": "lfp-001-bandeja-paisa",
+      "categoryId": "popular",
+      "nameEs": "Bandeja Paisa",
+      "nameEn": "Paisa Tray",
+      "basePriceCents": 2860,
+      "modifierGroupRefs": [
+        "protein-choice",
+        "recommended-sides-apps",
+        "recommended-desserts",
+        "recommended-beverages"
+      ],
+      "specialInstructionsEnabled": true
+    },
+    {
+      "id": "lfp-002-paisita",
+      "categoryId": "popular",
+      "nameEs": "Paisita",
+      "nameEn": "Little Paisa Platter",
+      "basePriceCents": 2080,
+      "modifierGroupRefs": [
+        "protein-choice",
+        "recommended-sides-apps",
+        "recommended-desserts",
+        "recommended-beverages"
+      ],
+      "specialInstructionsEnabled": true
+    },
+    {
+      "id": "lfp-003-picada",
+      "categoryId": "popular",
+      "nameEs": "Picada",
+      "nameEn": "Sampler",
+      "basePriceCents": 4160,
+      "modifierGroupRefs": [],
+      "specialInstructionsEnabled": false
+    },
+    {
+      "id": "lfp-027-especial-crema-pollo",
+      "categoryId": "sopas-lunes",
+      "nameEs": "Especial de crema de pollo",
+      "nameEn": "Cream of chicken special",
+      "basePriceCents": 1235,
+      "displayPricePrefix": "Desde",
+      "modifierGroupRefs": [
+        "rice-choice",
+        "salad-choice",
+        "soup-special-size",
+        "recommended-sides-apps",
+        "recommended-desserts",
+        "recommended-beverages"
+      ],
+      "specialInstructionsEnabled": true
+    },
+    {
+      "id": "lfp-026-especial-sopa-mondongo",
+      "categoryId": "sopas-lunes",
+      "nameEs": "Especial de sopa de mondongo",
+      "nameEn": "Tripe soup special",
+      "basePriceCents": 1235,
+      "displayPricePrefix": "Desde",
+      "modifierGroupRefs": [
+        "soup-special-size",
+        "rice-choice",
+        "salad-choice",
+        "recommended-sides-apps",
+        "recommended-desserts",
+        "recommended-beverages"
+      ],
+      "specialInstructionsEnabled": true
+    }
+  ]
+}
