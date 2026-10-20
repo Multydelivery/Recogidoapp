@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CarIcon, CheckIcon, DispatchIcon } from "@/components/icons";
 import {
-  canCancel, demoNotice, isServiceType, money, parseMoney, rideSteps, serviceLabels, statusLabels,
+  canCancel, demoNotice, isServiceType, money, parseDollarInput, rideSteps, serviceLabels, statusLabels,
   type RideRequest,
 } from "@/lib/rides/demo";
 import { useRideDemo } from "@/lib/rides/useRideDemo";
@@ -246,7 +246,11 @@ function DispatcherActions({ demo, ride }: { demo: Demo; ride: RideRequest }) {
     setError(null);
     try {
       const form = new FormData(event.currentTarget);
-      demo.act(ride.id, { type: "quote", providerCostCents: parseMoney(stringField(form, "cost")), customerPriceCents: parseMoney(stringField(form, "price")) });
+      const providerCostCents = parseDollarInput(stringField(form, "cost"));
+      const customerPriceCents = parseDollarInput(stringField(form, "price"));
+      if (providerCostCents === null) throw new Error("Costo proveedor: ingresa dólares válidos, por ejemplo $18.50, con hasta dos decimales y un máximo de $1,000,000.00.");
+      if (customerPriceCents === null) throw new Error("Precio cliente: ingresa dólares válidos, por ejemplo $21.00, con hasta dos decimales y un máximo de $1,000,000.00.");
+      demo.act(ride.id, { type: "quote", providerCostCents, customerPriceCents });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No se pudo preparar la cotización.");
     }
@@ -265,9 +269,9 @@ function DispatcherActions({ demo, ride }: { demo: Demo; ride: RideRequest }) {
       {error && <p role="alert" className={styles.error}>{error}</p>}
       {ride.status === "requested" && <button type="button" className={styles.primary} onClick={() => demo.act(ride.id, { type: "review" })}>Revisar solicitud</button>}
       {["reviewing", "quoted"].includes(ride.status) && <form onSubmit={quote} className={styles.fields}>
-        <Field label="Costo proveedor (USD) *"><input name="cost" inputMode="decimal" required defaultValue={ride.estimatedProviderCostCents === null ? "20.00" : (ride.estimatedProviderCostCents / 100).toFixed(2)} /></Field>
-        <Field label="Precio cliente (USD) *"><input name="price" inputMode="decimal" required defaultValue={ride.customerPriceCents === null ? "28.00" : (ride.customerPriceCents / 100).toFixed(2)} /></Field>
-        <p className={`${styles.muted} ${styles.wide}`}>Importes manuales de prueba. El margen se calcula como precio menos costo.</p>
+        <Field label="Costo proveedor (USD) *"><input name="cost" type="text" inputMode="decimal" required aria-describedby="ride-dollar-help" placeholder="$18.50" defaultValue={ride.estimatedProviderCostCents === null ? "20.00" : (ride.estimatedProviderCostCents / 100).toFixed(2)} /></Field>
+        <Field label="Precio cliente (USD) *"><input name="price" type="text" inputMode="decimal" required aria-describedby="ride-dollar-help" placeholder="$21.00" defaultValue={ride.customerPriceCents === null ? "28.00" : (ride.customerPriceCents / 100).toFixed(2)} /></Field>
+        <p id="ride-dollar-help" className={`${styles.muted} ${styles.wide}`}>Escribe dólares, no centavos: 18.50, $18.50, 21 o 21.00. Sin separadores de miles; máximo dos decimales. El margen se calcula como precio menos costo.</p>
         <button type="submit" className={styles.primary}>{ride.status === "quoted" ? "Actualizar cotización demo" : "Enviar cotización demo"}</button>
       </form>}
       {ride.status === "quoted" && <p>Esperando aprobación. <a href="/rides/demo/status" onClick={(event) => { if (!demo.select(ride.id)) event.preventDefault(); }}>Ver como cliente para aprobar</a></p>}

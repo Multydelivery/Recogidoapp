@@ -29,6 +29,13 @@ Con el servidor de desarrollo existente (`npm run dev`):
 2. En el seguimiento, abre **Dispatcher demo** en la misma pestana.
 3. Selecciona la solicitud, pulsa **Revisar solicitud** e ingresa importes en USD.
    Los valores iniciales de prueba son costo 20.00 y precio 28.00.
+   Escribe dolares, no centavos: `18.50`, `$18.50`, `21` y `21.00` son validos.
+   Se admite coma decimal, pero no separadores de miles ni mas de dos decimales.
+   El limite existente sigue siendo USD 1,000,000.00.
+   Las utilidades compartidas `parseDollarInput` y `formatCents` convierten
+   `$18.50` a `1850` y muestran `2100` como `$21.00`. Una entrada invalida
+   devuelve `null` y el formulario muestra un error sin guardar la cotizacion.
+   La persistencia, el modelo en enteros de centavos y los estados no cambian.
    El margen se calcula en centavos como precio menos costo; un margen negativo
    se muestra expresamente. No se calculan tarifas ni distancias reales.
 4. Envia la cotizacion, abre **Ver como cliente para aprobar** y aprueba el precio.

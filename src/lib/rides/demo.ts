@@ -107,17 +107,26 @@ function isCents(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 100_000_000;
 }
 
+export function formatCents(cents: number): string {
+  if (!Number.isSafeInteger(cents)) throw new Error("El importe debe ser un entero seguro en centavos.");
+  return new Intl.NumberFormat("es-US", { style: "currency", currency: "USD" }).format(cents / 100);
+}
+
 export function money(cents: number | null) {
-  return cents === null ? "Por definir" : new Intl.NumberFormat("es-US", { style: "currency", currency: "USD" }).format(cents / 100);
+  return cents === null ? "Por definir" : formatCents(cents);
+}
+
+export function parseDollarInput(value: string): number | null {
+  const normalized = value.trim().replace(/^\$\s*/, "");
+  if (!/^\d{1,7}([.,]\d{1,2})?$/.test(normalized)) return null;
+  const [whole, fraction = ""] = normalized.replace(",", ".").split(".");
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  return isCents(cents) ? cents : null;
 }
 
 export function parseMoney(value: string): number {
-  if (!/^\d{1,7}([.,]\d{1,2})?$/.test(value.trim())) {
-    throw new Error("Ingresa un importe válido en USD, con hasta dos decimales.");
-  }
-  const [whole, fraction = ""] = value.trim().replace(",", ".").split(".");
-  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-  if (!isCents(cents)) throw new Error("El importe supera el límite del demo (USD 1,000,000).");
+  const cents = parseDollarInput(value);
+  if (cents === null) throw new Error("Ingresa un importe válido en USD, con hasta dos decimales y un máximo de $1,000,000.00.");
   return cents;
 }
 

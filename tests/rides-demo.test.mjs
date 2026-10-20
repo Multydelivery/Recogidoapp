@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { registerHooks } from "node:module";
 import {
   addRide, applyRideAction, canCancel, createRide, decodeRideSession, demoNotice,
-  emptyRideSession, isServiceType, money, parseMoney, rideSteps, updateRide,
+  emptyRideSession, formatCents, isServiceType, money, parseDollarInput, parseMoney, rideSteps, updateRide,
 } from "../src/lib/rides/demo.ts";
 
 registerHooks({
@@ -77,6 +77,45 @@ test("money parsing is exact in cents and rejects invalid, negative and excessiv
   }
   assert.equal(money(null), "Por definir");
   assert.match(money(2800), /28\.00/);
+});
+
+test("dollar input accepts natural USD values with optional dollar sign without fractional cents", () => {
+  for (const [value, expected] of [
+    ["18.50", 1850], ["$18.50", 1850], ["21", 2100], ["21.00", 2100],
+    ["$21", 2100], [" $18.50 ", 1850], ["$ 18.50", 1850], ["18,50", 1850],
+    ["0", 0], ["$0.01", 1], ["0.29", 29], ["1.005", null],
+    ["$1000000.00", 100000000], ["$1000000.01", null],
+    ["", null], [" ", null], ["$", null], ["$-1", null], ["-18.50", null],
+    ["18.501", null], ["18.", null], ["1e2", null], ["Infinity", null],
+    ["NaN", null], ["21USD", null], ["$$21", null], ["21$", null],
+    ["1,000.00", null], ["1.000,00", null], ["18 50", null],
+  ]) {
+    assert.equal(parseDollarInput(value), expected, value);
+    if (expected !== null) assert.equal(Number.isInteger(parseDollarInput(value)), true);
+  }
+});
+
+test("cents presentation is USD with two decimals and handles zero and negative margins", () => {
+  for (const [cents, expected] of [[1850, "$18.50"], [2100, "$21.00"], [0, "$0.00"], [1, "$0.01"], [-250, "-$2.50"]]) {
+    assert.equal(formatCents(cents), expected);
+    assert.equal(money(cents), expected);
+  }
+  assert.equal(formatCents(100000000), "$1,000,000.00");
+  for (const cents of [NaN, Infinity, 18.5, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => formatCents(cents));
+  }
+  for (const cents of [0, 1, 29, 1850, 2100, 99999]) {
+    assert.equal(parseDollarInput(formatCents(cents).replaceAll(",", "")), cents);
+  }
+});
+
+test("dollar quote input preserves integer-cent model, margin and session schema", () => {
+  const ride = act(reviewing(), {
+    type: "quote", providerCostCents: parseDollarInput("$18.50"), customerPriceCents: parseDollarInput("21"),
+  });
+  assert.deepEqual([ride.estimatedProviderCostCents, ride.customerPriceCents, ride.estimatedMarginCents], [1850, 2100, 250]);
+  assert.deepEqual(decodeRideSession(JSON.stringify(addRide(emptyRideSession, ride))).requests[0], ride);
+  assert.equal(ride.status, "quoted");
 });
 
 test("full sequence requires client approval, retains model data, and never mutates input", () => {
