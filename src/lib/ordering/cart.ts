@@ -26,12 +26,12 @@ export function createCartItem(
   specialInstructions = "",
 ): CartItem | null {
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_ITEM_QUANTITY) return null;
-  if (
-    typeof specialInstructions !== "string" ||
-    specialInstructions.length > MAX_SPECIAL_INSTRUCTIONS_LENGTH ||
-    (!item.specialInstructionsEnabled && specialInstructions.trim().length > 0)
-  ) return null;
+  if (typeof specialInstructions !== "string") return null;
   const normalizedInstructions = specialInstructions.trim();
+  if (
+    normalizedInstructions.length > MAX_SPECIAL_INSTRUCTIONS_LENGTH ||
+    (!item.specialInstructionsEnabled && normalizedInstructions.length > 0)
+  ) return null;
   const normalizedModifiers = sanitizeModifiers(item, selectedModifiers);
   if (!normalizedModifiers) return null;
 

@@ -369,8 +369,12 @@
   border-bottom: 1px solid var(--ordering-border);
   background: rgb(255 255 255 / 96%);
   padding: 10px 28px;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   backdrop-filter: blur(12px);
+}
+
+.categoryNav::-webkit-scrollbar {
+  display: none;
 }
 
 .categoryNav button {
@@ -917,14 +921,20 @@
 }
 
 .removeButton {
+  display: grid;
+  width: 44px;
   min-height: 44px;
-  border: 0;
-  background: transparent;
+  flex: 0 0 44px;
+  place-items: center;
+  border: 1px solid var(--ordering-border);
+  border-radius: 10px;
+  background: white;
   color: #9d302a;
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+}
+
+.removeButton svg {
+  width: 19px;
+  height: 19px;
 }
 
 .cartLineTotal {
@@ -1007,6 +1017,7 @@
   inset: 50% auto auto 50%;
   display: none;
   width: min(650px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
   max-height: min(92dvh, 900px);
   transform: translate(-50%, -50%);
   overflow: hidden;
@@ -1030,6 +1041,8 @@
 
 .customizeDialog form {
   display: flex;
+  width: 100%;
+  height: 100%;
   min-height: 0;
   flex-direction: column;
 }
@@ -1054,7 +1067,7 @@
 .customizeBody {
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 24px;
+  padding: 16px 24px 24px;
   overscroll-behavior: contain;
 }
 
@@ -1086,6 +1099,7 @@
 
 .customInstructions textarea {
   width: 100%;
+  box-sizing: border-box;
   min-height: 88px;
   padding: 12px;
   border: 1px solid var(--border, #d7dce5);
@@ -1093,6 +1107,19 @@
   color: inherit;
   font: inherit;
   resize: vertical;
+}
+
+.instructionsHelp,
+.instructionsCount {
+  color: var(--ordering-muted);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.instructionsCount {
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
 }
 
 .customizeGroups {
@@ -1109,10 +1136,26 @@
 }
 
 .customizeGroup legend {
+  display: block;
   max-width: 100%;
   padding: 0 4px;
   font-size: 14px;
   font-weight: 800;
+}
+
+.groupHeading {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  width: 100%;
+  margin-right: 0 !important;
+}
+
+.selectionRequirement {
+  color: var(--ordering-muted);
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .customizeGroup legend > span {
@@ -1120,7 +1163,7 @@
   margin-right: 7px;
 }
 
-.customizeGroup legend .itemEnglish {
+.customizeGroup legend > .itemEnglish {
   display: block;
   margin: 2px 0 0;
   font-size: 11px;
@@ -1238,6 +1281,22 @@
 
 .customizeFooter .dialogActions {
   margin-top: 12px;
+}
+
+.customizeFooterSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.customizeActions {
+  display: grid;
+  grid-template-columns: minmax(110px, auto) minmax(0, 1fr);
+}
+
+.customizeActions > button {
+  min-height: 48px;
 }
 
 .visuallyHidden {
@@ -1471,14 +1530,16 @@
   }
 
   .customizeDialog {
-    inset: auto 0 max(12px, env(safe-area-inset-bottom));
+    inset: 4dvh 0 0;
     width: 100%;
-    max-height: min(92dvh, 840px);
+    max-width: 100%;
+    height: 96dvh;
+    max-height: 96dvh;
     transform: none;
     border: 0;
     border-top: 1px solid var(--ordering-border);
     border-radius: 20px 20px 0 0;
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: 0;
   }
 
   .customizeHeader {
@@ -1486,11 +1547,15 @@
   }
 
   .customizeBody {
-    padding: 13px 16px;
+    padding: 13px 16px calc(24px + env(safe-area-inset-bottom));
   }
 
   .customizeFooter {
     padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .customizeActions {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .cartLine {

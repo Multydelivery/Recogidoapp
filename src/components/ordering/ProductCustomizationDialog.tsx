@@ -44,12 +44,14 @@ export function ProductCustomizationDialog({
 }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
+  const groupRefs = useRef<Record<string, HTMLFieldSetElement | null>>({});
   const [selections, setSelections] = useState<ModifierSelections>(() =>
     selectionsFromModifiers(initialModifiers),
   );
   const [quantity, setQuantity] = useState(initialQuantity);
   const [specialInstructions, setSpecialInstructions] = useState(initialSpecialInstructions);
   const [saveError, setSaveError] = useState("");
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -66,20 +68,18 @@ export function ProductCustomizationDialog({
     () => item ? item.modifierGroups.flatMap((group) =>
       (selections[group.id] ?? []).flatMap((optionId) => {
         const option = group.options.find((candidate) => candidate.id === optionId);
-        if (!option || option.priceAdjustment === null || !option.available) return [];
+        if (!option || option.priceDeltaCents === null || !option.available) return [];
         return [{
           groupId: group.id,
           optionId: option.id,
           nameEs: option.nameEs,
           nameEn: option.nameEn,
-          priceAdjustmentCents: priceToCents(option.priceAdjustment),
+          priceAdjustmentCents: option.priceDeltaCents,
         }];
       }),
     ) : [],
     [item, selections],
   );
-  const errors = item ? getModifierSelectionErrors(item, selections) : [];
-  const valid = Boolean(item && item.available && errors.length === 0);
   const unitPriceCents = item ? getConfiguredPriceCents(item, modifiers) : 0;
 
   const closeDialog = () => {
@@ -105,8 +105,27 @@ export function ProductCustomizationDialog({
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!item || !valid) return;
-    if (onSave(modifiers, quantity, specialInstructions)) closeDialog();
+    if (!item || !item.available) return;
+
+    if (getModifierSelectionErrors(item, selections).length) {
+      const firstInvalidGroup = item.modifierGroups.find((group) =>
+        getModifierGroupError(item, group.id, selections) !== null,
+      );
+      setAttemptedSubmit(true);
+      if (firstInvalidGroup) {
+        window.requestAnimationFrame(() => {
+          const group = groupRefs.current[firstInvalidGroup.id];
+          group?.focus();
+          group?.scrollIntoView({
+            behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+            block: "center",
+          });
+        });
+      }
+      return;
+    }
+
+    if (onSave(modifiers, quantity, specialInstructions.trim())) closeDialog();
     else setSaveError("No se pudo guardar esta configuración. Revisa el máximo de unidades del producto.");
   };
 
@@ -149,24 +168,13 @@ export function ProductCustomizationDialog({
           </p>
 
           <div className={styles.customizeBody}>
-            <label className={styles.customizeQuantity}>
-              <span>Cantidad</span>
-              <input
-                type="number"
-                min={1}
-                max={20}
-                step={1}
-                value={quantity}
-                onChange={(event) => {
-                  const value = Number(event.target.value);
-                  if (Number.isInteger(value)) setQuantity(Math.max(1, Math.min(20, value)));
-                }}
-              />
-            </label>
-
             <div className={styles.customizeGroups}>
               {item.modifierGroups.map((group) => {
-                const groupError = getModifierGroupError(item, group.id, selections);
+                const selectionError = getModifierGroupError(item, group.id, selections);
+                const groupError = attemptedSubmit ? selectionError : null;
+                const displayedError = groupError && group.required
+                  ? "Selecciona una opción para continuar."
+                  : groupError;
                 const singleChoice = group.maxSelections === 1;
                 const selected = selections[group.id] ?? [];
                 const errorId = `customize-error-${group.id}`;
@@ -174,12 +182,18 @@ export function ProductCustomizationDialog({
                 return (
                   <fieldset
                     key={group.id}
+                    ref={(element) => { groupRefs.current[group.id] = element; }}
                     className={styles.customizeGroup}
-                    aria-describedby={groupError ? errorId : undefined}
+                    aria-describedby={displayedError ? errorId : undefined}
+                    tabIndex={-1}
                   >
                     <legend>
-                      <span>{group.nameEs}</span>
-                      {group.required && <span className={styles.requiredLabel}>Obligatorio</span>}
+                      <span className={styles.groupHeading}>
+                        <span>{group.nameEs}</span>
+                        <span className={styles.selectionRequirement}>
+                          {group.required ? "Obligatorio · Elige 1" : `Opcional · Hasta ${group.maxSelections}`}
+                        </span>
+                      </span>
                       <span className={styles.itemEnglish}>{group.nameEn}</span>
                     </legend>
                     <div className={styles.customizeOptions}>
@@ -187,7 +201,7 @@ export function ProductCustomizationDialog({
                         const id = `customize-${item.id}-${group.id}-${option.id}`;
                         const checked = selected.includes(option.id);
                         const disabled = !option.available ||
-                          option.priceAdjustment === null ||
+                          option.priceDeltaCents === null ||
                           (!singleChoice && !checked && selected.length >= group.maxSelections);
                         return (
                           <label
@@ -203,7 +217,7 @@ export function ProductCustomizationDialog({
                               value={option.id}
                               checked={checked}
                               disabled={disabled}
-                              required={singleChoice && group.required}
+                              aria-required={group.required || undefined}
                               onChange={() => toggleSelection(group.id, option.id, singleChoice)}
                             />
                             <span className={styles.customizeOptionName}>
@@ -211,57 +225,83 @@ export function ProductCustomizationDialog({
                               <span>{option.nameEn}</span>
                               {option.recommended && <em>Recomendado</em>}
                             </span>
-                            <span className={styles.customizeOptionPrice}>
-                              {!option.available || option.priceAdjustment === null
-                                ? "Precio por confirmar"
-                                : option.priceAdjustment === 0
-                                  ? "Incluido"
-                                  : `+${formatMoney(priceToCents(option.priceAdjustment))}`}
-                            </span>
+                            {(option.priceDeltaCents === null || !option.available) ? (
+                              <span className={styles.customizeOptionPrice}>
+                                Precio por confirmar
+                              </span>
+                            ) : option.priceDeltaCents > 0 ? (
+                              <span className={styles.customizeOptionPrice}>
+                                +{formatMoney(option.priceDeltaCents)}
+                              </span>
+                            ) : null}
                           </label>
                         );
                       })}
                     </div>
-                    {item.specialInstructionsEnabled && (
-                      <label className={styles.customInstructions}>
-                        <span>Instrucciones especiales (opcional)</span>
-                        <textarea
-                          value={specialInstructions}
-                          maxLength={300}
-                          rows={3}
-                          onChange={(event) => setSpecialInstructions(event.target.value)}
-                        />
-                      </label>
-                    )}
                     {group.maxSelections > 1 && (
-                      <p className={styles.selectionLimit} aria-live="polite">
-                        {(selections[group.id] ?? []).length >= group.maxSelections
-                          ? `Máximo de ${group.maxSelections} opciones alcanzado. Deselecciona una para cambiar tu selección.`
-                          : `Puedes elegir hasta ${group.maxSelections} adicionales.`}
+                      <p className={styles.selectionLimit}>
+                        {selected.length >= group.maxSelections
+                          ? `Puedes elegir hasta ${group.maxSelections}. Ya alcanzaste el máximo; desmarca una opción para cambiarla.`
+                          : `Puedes elegir hasta ${group.maxSelections}.`}
                       </p>
                     )}
-                    {groupError && (
-                      <p id={errorId} className={styles.selectionError} role="status">
-                        {groupError}
+                    {displayedError && (
+                      <p id={errorId} className={styles.selectionError} aria-live="polite">
+                        {displayedError}
                       </p>
                     )}
                   </fieldset>
                 );
               })}
             </div>
+            {item.specialInstructionsEnabled && (
+              <label className={styles.customInstructions}>
+                <span>Instrucciones especiales (opcional)</span>
+                <span className={styles.instructionsHelp}>
+                  Ejemplo: sin cebolla, salsa aparte o alergia alimentaria.
+                </span>
+                <textarea
+                  value={specialInstructions}
+                  maxLength={300}
+                  rows={3}
+                  placeholder="Escribe aquí cualquier indicación para el restaurante"
+                  aria-describedby="custom-instructions-count"
+                  onChange={(event) => setSpecialInstructions(event.target.value)}
+                />
+                <span id="custom-instructions-count" className={styles.instructionsCount}>
+                  {specialInstructions.length}/300 caracteres
+                </span>
+              </label>
+            )}
           </div>
 
           <footer className={styles.customizeFooter}>
-            <p className={styles.configuredPrice} aria-live="polite" aria-atomic="true">
-              Precio unitario: <strong>{formatMoney(unitPriceCents)}</strong>
-            </p>
+            <div className={styles.customizeFooterSummary}>
+              <p className={styles.configuredPrice} aria-live="polite" aria-atomic="true">
+                Precio unitario: <strong>{formatMoney(unitPriceCents)}</strong>
+              </p>
+              <label className={styles.customizeQuantity}>
+                <span>Cantidad</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={20}
+                  step={1}
+                  value={quantity}
+                  onChange={(event) => {
+                    const value = Number(event.target.value);
+                    if (Number.isInteger(value)) setQuantity(Math.max(1, Math.min(20, value)));
+                  }}
+                />
+              </label>
+            </div>
             {saveError && <p className={styles.selectionError} role="alert">{saveError}</p>}
-            <div className={styles.dialogActions}>
+            <div className={`${styles.dialogActions} ${styles.customizeActions}`}>
               <button type="button" className={styles.secondaryButton} onClick={closeDialog}>
                 Cancelar
               </button>
-              <button type="submit" className={styles.primaryButton} disabled={!valid}>
-                {editingLineId ? "Guardar opciones" : "Agregar al carrito"}
+              <button type="submit" className={styles.primaryButton} disabled={!item.available}>
+                {editingLineId ? "Guardar cambios" : "Agregar al carrito"}
               </button>
             </div>
           </footer>

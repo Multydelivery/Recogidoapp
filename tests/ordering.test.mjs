@@ -113,14 +113,31 @@ test("catalog IDs are unique, four dishes are configurable, and Picada is direct
   assert.deepEqual(picada.modifierGroups, []);
   assert.equal(picada.specialInstructionsEnabled, false);
   assert.equal(createCartItem(picada).unitPriceCents, 4160);
+  assert.deepEqual(
+    menu.items.filter((item) => item.featured).map((item) => item.id),
+    [
+      "lfp-001-bandeja-paisa",
+      "lfp-002-paisita",
+      "lfp-003-picada",
+      "lfp-005-empanadas",
+      "lfp-019-pechuga-en-salsa-de-champinones",
+      "lfp-026-especial-sopa-mondongo",
+    ],
+  );
 });
 
 test("Mondongo has the exact required and optional groups from phase 1", () => {
-  assert.equal(soup.modifierGroups.length, 6);
-  assert.equal(new Set(soup.modifierGroups.map((group) => group.id)).size, 6);
+  assert.equal(soup.modifierGroups.length, 7);
+  assert.equal(new Set(soup.modifierGroups.map((group) => group.id)).size, 7);
   for (const group of soup.modifierGroups) {
     const ids = group.options.map((option) => option.id);
     assert.equal(new Set(ids).size, ids.length, `${group.id} option IDs are unique`);
+    assert.ok(group.id);
+    assert.ok(group.nameEs);
+    assert.ok(group.nameEn);
+    assert.ok(group.options.every((option) =>
+      Number.isInteger(option.priceDeltaCents) && typeof option.available === "boolean",
+    ));
     if (group.required) {
       assert.ok(group.minSelections >= 1);
       assert.ok(group.maxSelections >= group.minSelections);
@@ -133,14 +150,61 @@ test("Mondongo has the exact required and optional groups from phase 1", () => {
     "rice-choice",
     "salad-choice",
     "recommended-sides-apps",
-    "recommended-desserts",
     "recommended-beverages",
+    "recommended-desserts",
+    "recommended-other",
   ]);
   assert.ok(soup.specialInstructionsEnabled);
   assert.ok(soup.modifierGroups.slice(0, 3).every((group) => group.required));
-  assert.ok(soup.modifierGroups.slice(3).every((group) =>
-    !group.required && group.minSelections === 0 && group.maxSelections === 5,
-  ));
+  assert.deepEqual(
+    soup.modifierGroups.slice(3).map(({ id, required, minSelections, maxSelections }) =>
+      [id, required, minSelections, maxSelections],
+    ),
+    [
+      ["recommended-sides-apps", false, 0, 5],
+      ["recommended-beverages", false, 0, 5],
+      ["recommended-desserts", false, 0, 2],
+      ["recommended-other", false, 0, 3],
+    ],
+  );
+  assert.deepEqual(
+    soup.modifierGroups.find((group) => group.id === "recommended-sides-apps")
+      .options.map(({ id, priceDeltaCents }) => [id, priceDeltaCents]),
+    [
+      ["empanadas", 228],
+      ["tostones", 455],
+      ["extra-beans", 455],
+      ["madurito", 520],
+      ["chicharron-arepita", 780],
+    ],
+  );
+  const beverages = soup.modifierGroups.find((group) => group.id === "recommended-beverages");
+  assert.deepEqual(
+    beverages.options.map(({ id, priceDeltaCents }) => [id, priceDeltaCents]),
+    [
+      ["postobon", 293],
+      ["coca-cola", 260],
+      ["mango", 650],
+      ["large-cafe-con-leche", 390],
+      ["maracuya", 650],
+    ],
+  );
+  assert.equal(beverages.options.some((option) => option.id === "sprite"), false);
+  assert.ok(menu.items.some((item) => item.id === "lfp-025-maracuya"));
+  assert.deepEqual(
+    soup.modifierGroups.find((group) => group.id === "recommended-desserts")
+      .options.map(({ id, priceDeltaCents }) => [id, priceDeltaCents]),
+    [["caramel-flan", 488], ["tres-leches", 553]],
+  );
+  assert.deepEqual(
+    soup.modifierGroups.find((group) => group.id === "recommended-other")
+      .options.map(({ id, priceDeltaCents }) => [id, priceDeltaCents]),
+    [
+      ["chunchurria", 1170],
+      ["arepa-chocolo-cheese", 520],
+      ["arepa-chocolo", 390],
+    ],
+  );
 });
 
 test("shared templates resolve by reference and missing references fail explicitly", () => {
@@ -235,8 +299,15 @@ test("Bandeja and Paisita add $2.60 for ground beef; Picada stays direct-add", (
 
 test("optional groups enforce their configured selection maximum", () => {
   const sides = soup.modifierGroups.find((group) => group.id === "recommended-sides-apps");
-  assert.equal(sides.required, false);
-  assert.equal(sides.maxSelections, 5);
+  const beverages = soup.modifierGroups.find((group) => group.id === "recommended-beverages");
+  const desserts = soup.modifierGroups.find((group) => group.id === "recommended-desserts");
+  const other = soup.modifierGroups.find((group) => group.id === "recommended-other");
+  assert.deepEqual(
+    [sides, beverages, desserts, other].map(({ required, maxSelections }) =>
+      [required, maxSelections],
+    ),
+    [[false, 5], [false, 5], [false, 2], [false, 3]],
+  );
   const limitedSoup = {
     ...soup,
     modifierGroups: soup.modifierGroups.map((group) =>
@@ -293,13 +364,41 @@ test("identical soup configurations increment the same line", () => {
   assert.equal(cart[0].lineId, line.configurationKey);
 });
 
-test("special instructions distinguish configurations and persist with the line", () => {
-  const first = createCartItem(soup, selectSoup(), 1, "Sin cebolla");
+test("special instructions are trimmed, capped, distinguish configurations, and persist", () => {
+  const first = createCartItem(soup, selectSoup(), 1, "  Sin cebolla  ");
   const second = createCartItem(soup, selectSoup(), 1, "Poco picante");
+  assert.equal(first.specialInstructions, "Sin cebolla");
+  assert.equal(createCartItem(soup, selectSoup(), 1, "   ").specialInstructions, undefined);
+  assert.equal(createCartItem(soup, selectSoup(), 1, ` ${"x".repeat(300)} `).specialInstructions.length, 300);
+  assert.equal(createCartItem(soup, selectSoup(), 1, "x".repeat(301)), null);
   assert.notEqual(first.configurationKey, second.configurationKey);
   const cart = addCartItem(addCartItem([], first), second);
   assert.equal(cart.length, 2);
   assert.equal(normalizeCart({ schemaVersion: 2, items: cart }, menu.items)[0].specialInstructions, "Sin cebolla");
+});
+
+test("legacy dessert selections survive when recommendations are split into groups", () => {
+  const current = configuredSoup();
+  const legacyLine = {
+    ...current,
+    selectedModifiers: [
+      ...current.selectedModifiers,
+      { groupId: "recommended-desserts", optionId: "chunchurria" },
+      { groupId: "recommended-desserts", optionId: "arepa-chocolo-cheese" },
+    ],
+  };
+  const [migrated] = normalizeCart({
+    schemaVersion: CART_SCHEMA_VERSION,
+    items: [legacyLine],
+  }, menu.items);
+  assert.ok(migrated);
+  assert.deepEqual(
+    migrated.selectedModifiers.slice(-2).map(({ groupId, optionId }) => [groupId, optionId]),
+    [
+      ["recommended-other", "chunchurria"],
+      ["recommended-other", "arepa-chocolo-cheese"],
+    ],
+  );
 });
 
 test("editing options replaces a line and merges into an existing matching configuration", () => {
@@ -459,13 +558,62 @@ test("checkout renders all selected choices, unit/line totals, and stays offline
     new URL("../src/components/ordering/ProductCustomizationDialog.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(component, /Precio unitario configurado/);
+  assert.match(component, /Precio unitario:/);
   assert.match(component, /Total de la línea/);
   assert.match(component, /Catálogo de demostración\. No se enviará ningún pedido real\./);
   assert.match(component, /item\.modifierGroups\.length > 0 \|\| item\.specialInstructionsEnabled/);
   assert.match(component, /modifier\.nameEs/);
   assert.match(customizationDialog, /specialInstructionsEnabled/);
+  assert.equal((customizationDialog.match(/Instrucciones especiales \(opcional\)/g) ?? []).length, 1);
+  assert.match(customizationDialog, /Ejemplo: sin cebolla, salsa aparte o alergia alimentaria\./);
+  assert.match(customizationDialog, /Escribe aquí cualquier indicación para el restaurante/);
+  assert.match(customizationDialog, /maxLength=\{300\}/);
+  assert.match(customizationDialog, /specialInstructions\.trim\(\)/);
+  assert.match(customizationDialog, /Guardar cambios/);
+  assert.match(component, /<TrashIcon aria-hidden="true" \/>/);
+  assert.match(component, /group\.nameEs/);
   assert.doesNotMatch(component + customizationDialog, /\bfetch\s*\(|XMLHttpRequest|navigator\.sendBeacon/);
+});
+
+test("customization validation waits for submit, focuses the first required group, and announces errors", () => {
+  const dialog = readFileSync(
+    new URL("../src/components/ordering/ProductCustomizationDialog.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(dialog, /attemptedSubmit \? selectionError : null/);
+  assert.match(dialog, /Selecciona una opción para continuar\./);
+  assert.match(dialog, /aria-live="polite"/);
+  assert.match(dialog, /groupRefs\.current\[firstInvalidGroup\.id\]/);
+  assert.match(dialog, /group\?\.focus\(\)/);
+  assert.match(dialog, /group\?\.scrollIntoView/);
+  assert.doesNotMatch(dialog, /required=\{singleChoice && group\.required\}/);
+  assert.doesNotMatch(dialog, /disabled=\{!valid\}/);
+  assert.match(dialog, /selected\.length >= group\.maxSelections/);
+  assert.match(dialog, /!checked && selected\.length >= group\.maxSelections/);
+  assert.match(dialog, /disabled=\{!item\.available\}/);
+});
+
+test("category navigation is sticky, scrollable without a scrollbar, and tracks sections", () => {
+  const component = readFileSync(
+    new URL("../src/components/ordering/OrderingExperience.tsx", import.meta.url),
+    "utf8",
+  );
+  const styles = readFileSync(
+    new URL("../src/components/ordering/OrderingExperience.module.css", import.meta.url),
+    "utf8",
+  );
+  assert.match(component, /<nav className=\{styles\.categoryNav\}/);
+  assert.match(component, /aria-pressed=\{activeCategory === category\.id\}/);
+  assert.match(component, /new IntersectionObserver/);
+  assert.match(component, /section\?\.scrollIntoView/);
+  assert.match(component, /prefers-reduced-motion: reduce/);
+  assert.match(styles, /\.categoryNav\s*\{[^}]*position:\s*sticky/s);
+  assert.match(styles, /\.categoryNav::-webkit-scrollbar/);
+  assert.match(styles, /scrollbar-width:\s*none/);
+  assert.match(styles, /\.customizeDialog\s*\{[^}]*max-width:\s*calc\(100vw - 32px\)/s);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*?\.customizeDialog\s*\{[^}]*max-width:\s*100%/);
+  assert.match(styles, /scroll-margin-top:\s*150px/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*?scroll-margin-top:\s*120px/);
 });
 
 test("menu cards use one accessible native plus button with direct/configurable routing", () => {

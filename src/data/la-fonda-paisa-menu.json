@@ -125,7 +125,7 @@
       "price": 27.95,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -210,7 +210,7 @@
       "price": 7.8,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -278,7 +278,7 @@
       "price": 20.15,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -329,7 +329,7 @@
       "price": 20.15,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -363,7 +363,7 @@
       "price": 17.55,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -431,7 +431,7 @@
       "price": 27.3,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -465,7 +465,7 @@
       "price": 5.53,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -482,7 +482,7 @@
       "price": 6.5,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {
@@ -499,7 +499,7 @@
       "price": 12.35,
       "currency": "USD",
       "available": true,
-      "featured": true,
+      "featured": false,
       "imageUrl": null,
       "modifierGroups": [],
       "source": {

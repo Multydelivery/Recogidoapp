@@ -23,7 +23,7 @@ export interface ModifierOption {
   id: string;
   nameEs: string;
   nameEn: string;
-  priceAdjustment: number | null;
+  priceDeltaCents: number | null;
   available: boolean;
   recommended?: boolean;
 }

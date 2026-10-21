@@ -129,8 +129,8 @@
       ]
     },
     "recommended-sides-apps": {
-      "nameEs": "Acompañamientos y aperitivos recomendados",
-      "nameEn": "Recommended sides and apps",
+      "nameEs": "Acompañamientos recomendados",
+      "nameEn": "Recommended sides",
       "required": false,
       "minSelections": 0,
       "maxSelections": 5,
@@ -154,16 +154,16 @@
           "priceAdjustmentCents": 455
         },
         {
-          "id": "chicharron-arepita",
-          "nameEs": "Chicharrón con arepita",
-          "nameEn": "Crispy pork belly with corn cake",
-          "priceAdjustmentCents": 780
-        },
-        {
           "id": "madurito",
           "nameEs": "Orden de madurito",
           "nameEn": "Order of fried sweet plantains",
           "priceAdjustmentCents": 520
+        },
+        {
+          "id": "chicharron-arepita",
+          "nameEs": "Chicharrón con arepita",
+          "nameEn": "Crispy pork belly with corn cake",
+          "priceAdjustmentCents": 780
         }
       ]
     },
@@ -172,7 +172,7 @@
       "nameEn": "Recommended desserts",
       "required": false,
       "minSelections": 0,
-      "maxSelections": 5,
+      "maxSelections": 2,
       "options": [
         {
           "id": "caramel-flan",
@@ -185,7 +185,16 @@
           "nameEs": "Tres leches",
           "nameEn": "Three milk cake",
           "priceAdjustmentCents": 553
-        },
+        }
+      ]
+    },
+    "recommended-other": {
+      "nameEs": "Otros recomendados",
+      "nameEn": "Other recommendations",
+      "required": false,
+      "minSelections": 0,
+      "maxSelections": 3,
+      "options": [
         {
           "id": "chunchurria",
           "nameEs": "Chunchurria",
@@ -214,16 +223,16 @@
       "maxSelections": 5,
       "options": [
         {
-          "id": "coca-cola",
-          "nameEs": "Coca-Cola",
-          "nameEn": "Coke",
-          "priceAdjustmentCents": 260
-        },
-        {
           "id": "postobon",
           "nameEs": "Gaseosa Postobón",
           "nameEn": "Colombian soda",
           "priceAdjustmentCents": 293
+        },
+        {
+          "id": "coca-cola",
+          "nameEs": "Coca-Cola",
+          "nameEn": "Coke",
+          "priceAdjustmentCents": 260
         },
         {
           "id": "mango",
@@ -238,10 +247,10 @@
           "priceAdjustmentCents": 390
         },
         {
-          "id": "sprite",
-          "nameEs": "Sprite",
-          "nameEn": "Sprite",
-          "priceAdjustmentCents": 260
+          "id": "maracuya",
+          "nameEs": "Maracuyá",
+          "nameEn": "Passion fruit",
+          "priceAdjustmentCents": 650
         }
       ]
     }
@@ -256,8 +265,9 @@
       "modifierGroupRefs": [
         "protein-choice",
         "recommended-sides-apps",
+        "recommended-beverages",
         "recommended-desserts",
-        "recommended-beverages"
+        "recommended-other"
       ],
       "specialInstructionsEnabled": true
     },
@@ -270,8 +280,9 @@
       "modifierGroupRefs": [
         "protein-choice",
         "recommended-sides-apps",
+        "recommended-beverages",
         "recommended-desserts",
-        "recommended-beverages"
+        "recommended-other"
       ],
       "specialInstructionsEnabled": true
     },
@@ -296,8 +307,9 @@
         "salad-choice",
         "soup-special-size",
         "recommended-sides-apps",
+        "recommended-beverages",
         "recommended-desserts",
-        "recommended-beverages"
+        "recommended-other"
       ],
       "specialInstructionsEnabled": true
     },
@@ -313,8 +325,9 @@
         "rice-choice",
         "salad-choice",
         "recommended-sides-apps",
+        "recommended-beverages",
         "recommended-desserts",
-        "recommended-beverages"
+        "recommended-other"
       ],
       "specialInstructionsEnabled": true
     }

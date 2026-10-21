@@ -11,6 +11,7 @@ interface PhaseOneOption {
   nameEs: string;
   nameEn: string;
   priceAdjustmentCents: number;
+  available?: boolean;
 }
 
 interface PhaseOneGroup {
@@ -68,8 +69,8 @@ export function resolveModifierGroupRefs(
           id: option.id,
           nameEs: option.nameEs,
           nameEn: option.nameEn,
-          priceAdjustment: option.priceAdjustmentCents / 100,
-          available: true,
+          priceDeltaCents: option.priceAdjustmentCents,
+          available: option.available ?? true,
         })),
       },
     ]),

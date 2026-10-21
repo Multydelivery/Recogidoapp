@@ -18,7 +18,7 @@ import {
 import { filterMenuItems, getCategoryName } from "@/lib/ordering/menu";
 import { priceToCents } from "@/lib/ordering/pricing";
 import type { CartItem, MenuCategory, MenuItem, Restaurant, SelectedModifier } from "@/lib/ordering/types";
-import { CarIcon, PhoneIcon, RestaurantIcon, SearchIcon, ShoppingBagIcon } from "@/components/icons";
+import { CarIcon, PhoneIcon, RestaurantIcon, SearchIcon, ShoppingBagIcon, TrashIcon } from "@/components/icons";
 import { ProductCustomizationDialog } from "./ProductCustomizationDialog";
 import { RestaurantHero } from "./RestaurantHero";
 import styles from "./OrderingExperience.module.css";
@@ -171,36 +171,42 @@ function CartLines({
       {cartItems.map((cartItem) => {
         const item = menuById.get(cartItem.productId);
         if (!item) return null;
-        const selections = cartItem.selectedModifiers.filter(
-          (modifier) => modifier.priceAdjustmentCents === 0,
-        );
-        const extras = cartItem.selectedModifiers.filter(
-          (modifier) => modifier.priceAdjustmentCents > 0,
-        );
+        const selectedGroups = item.modifierGroups.flatMap((group) => {
+          const options = cartItem.selectedModifiers.filter(
+            (modifier) => modifier.groupId === group.id,
+          );
+          if (!options.length) return [];
+          return [{
+            group,
+            options,
+          }];
+        });
 
         return (
           <li key={cartItem.lineId} className={styles.cartLine}>
             <div className={styles.cartLineDetails}>
               <strong>{item.nameEs}</strong>
               <span>{getCategoryName(categories, item.categoryId)}</span>
-              <span>Precio base: {formatMoney(priceToCents(item.price))}</span>
-              {selections.map((modifier) => (
-                <span key={`${modifier.groupId}-${modifier.optionId}`}>
-                  {modifier.nameEs}
+              {selectedGroups.map(({ group, options }) => (
+                <span key={group.id}>
+                  {group.nameEs}: {options.map((modifier) =>
+                    `${modifier.nameEs}${modifier.priceAdjustmentCents > 0
+                      ? ` (+${formatMoney(modifier.priceAdjustmentCents)})`
+                      : ""}`,
+                  ).join(", ")}
                 </span>
               ))}
               {cartItem.specialInstructions && (
                 <span>Instrucciones: {cartItem.specialInstructions}</span>
               )}
-              {extras.map((modifier) => (
-                <span key={`extra-${modifier.groupId}-${modifier.optionId}`}>
-                  {modifier.nameEs}: +{formatMoney(modifier.priceAdjustmentCents)}
-                </span>
-              ))}
-              <span>Precio unitario configurado: {formatMoney(cartItem.unitPriceCents)}</span>
+              <span>Precio unitario: {formatMoney(cartItem.unitPriceCents)}</span>
             </div>
             <div className={styles.cartLineControls}>
-              <div className={styles.quantityControl} aria-label={`Cantidad de ${item.nameEs}`}>
+              <div
+                className={styles.quantityControl}
+                role="group"
+                aria-label={`Cantidad de ${item.nameEs}`}
+              >
                 <button
                   type="button"
                   aria-label={`Disminuir ${item.nameEs}`}
@@ -224,7 +230,7 @@ function CartLines({
                 aria-label={`Eliminar ${item.nameEs} del carrito`}
                 onClick={() => onRemove(cartItem)}
               >
-                Eliminar
+                <TrashIcon aria-hidden="true" />
               </button>
             </div>
             {(item.modifierGroups.length > 0 || item.specialInstructionsEnabled) && (
@@ -232,8 +238,9 @@ function CartLines({
                 type="button"
                 className={styles.editOptionsButton}
                 onClick={() => onEdit(cartItem, item)}
+                aria-label={`Editar ${item.nameEs}`}
               >
-                Editar opciones
+                Editar
               </button>
             )}
             <strong className={styles.cartLineTotal}>
@@ -310,6 +317,36 @@ export function OrderingExperience({
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [items]);
+
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting || entry.boundingClientRect.top < 180)) return;
+      const sections = Object.entries(categorySections.current).flatMap(([id, section]) => {
+        if (!section) return [];
+        const rect = section.getBoundingClientRect();
+        return [{ id, top: rect.top, bottom: rect.bottom }];
+      });
+      const activeSection = sections
+        .filter((section) => section.top <= 180 && section.bottom > 180)
+        .sort((left, right) => right.top - left.top)[0] ??
+        sections.filter((section) => section.top > 180)
+          .sort((left, right) => left.top - right.top)[0];
+      if (!activeSection) return;
+      setActiveCategory(
+        activeSection.id === "featured"
+          ? "featured"
+          : activeSection.id,
+      );
+    }, {
+      rootMargin: "-150px 0px -65% 0px",
+      threshold: 0,
+    });
+    Object.values(categorySections.current).forEach((section) => {
+      if (section) observer.observe(section);
+    });
+    return () => observer.disconnect();
+  }, [filteredItems, orderedCategories]);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -457,11 +494,15 @@ export function OrderingExperience({
   const selectCategory = (id: string) => {
     setActiveCategory(id);
     if (search) setSearch("");
-    const section = categorySections.current[id];
-    section?.scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-      block: "start",
-    });
+    const scrollToSection = () => {
+      const section = categorySections.current[id];
+      section?.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
+    };
+    if (search) window.requestAnimationFrame(scrollToSection);
+    else scrollToSection();
   };
 
   const cartButtonLabel = `Ver carrito, ${summary.totalUnits} ${

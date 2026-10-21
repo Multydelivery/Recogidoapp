@@ -26,7 +26,7 @@ export function getModifierGroupError(
   const uniqueIds = new Set(selectedIds);
   const invalidOption = selectedIds.some((optionId) => {
     const option = group.options.find((candidate) => candidate.id === optionId);
-    return !option || !option.available || option.priceAdjustment === null;
+    return !option || !option.available || option.priceDeltaCents === null;
   });
 
   if (invalidOption || uniqueIds.size !== selectedIds.length) {
@@ -72,13 +72,13 @@ export function createSelectedModifiers(
   return item.modifierGroups.flatMap((group) =>
     (selections[group.id] ?? []).flatMap((optionId) => {
       const option = group.options.find((candidate) => candidate.id === optionId);
-      if (!option || option.priceAdjustment === null) return [];
+      if (!option || option.priceDeltaCents === null) return [];
       return [{
         groupId: group.id,
         optionId: option.id,
         nameEs: option.nameEs,
         nameEn: option.nameEn,
-        priceAdjustmentCents: priceToCents(option.priceAdjustment),
+        priceAdjustmentCents: option.priceDeltaCents,
       }];
     }),
   );
@@ -138,9 +138,21 @@ export function sanitizeModifiers(
     if (!candidate || typeof candidate !== "object") return null;
     const modifier = candidate as Record<string, unknown>;
     if (typeof modifier.groupId !== "string" || typeof modifier.optionId !== "string") return null;
-    const group = item.modifierGroups.find((entry) => entry.id === modifier.groupId);
-    const option = group?.options.find((entry) => entry.id === modifier.optionId);
-    if (!group || !option || !option.available || option.priceAdjustment === null) continue;
+    let group = item.modifierGroups.find((entry) => entry.id === modifier.groupId);
+    let option = group?.options.find((entry) => entry.id === modifier.optionId);
+    if (!option) {
+      const relocatedOption = item.modifierGroups.flatMap((candidateGroup) => {
+        const candidateOption = candidateGroup.options.find(
+          (entry) => entry.id === modifier.optionId,
+        );
+        return candidateOption ? [{ group: candidateGroup, option: candidateOption }] : [];
+      });
+      if (relocatedOption.length === 1) {
+        group = relocatedOption[0].group;
+        option = relocatedOption[0].option;
+      }
+    }
+    if (!group || !option || !option.available || option.priceDeltaCents === null) continue;
     (selections[group.id] ??= []).push(option.id);
   }
 

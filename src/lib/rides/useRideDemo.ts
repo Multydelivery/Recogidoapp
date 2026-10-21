@@ -5,27 +5,48 @@ import {
   addRide, createRide, decodeRideSession, rideStorageKey, updateRide,
   type RideAction, type RideInput, type RideSession,
 } from "./demo";
+import { advanceDemoSession, demoRideProvider, demoTickIntervalMs } from "./simulator";
 
 const changeEvent = "recogido-rides-demo-change";
 const loading = "__rides_loading__";
 const unavailable = "__rides_unavailable__";
+const migrationFailed = "__rides_migration_failed__";
+let migrationError: string | null = null;
+
+function normalizeStorage() {
+  try {
+    const raw = window.sessionStorage.getItem(rideStorageKey);
+    if (raw !== null) {
+      const normalized = JSON.stringify(advanceDemoSession(decodeRideSession(raw), new Date().toISOString()));
+      if (raw !== normalized) window.sessionStorage.setItem(rideStorageKey, normalized);
+    }
+    migrationError = null;
+  } catch (error) {
+    migrationError = error instanceof Error ? error.message : "No se pudo persistir la migración del demo.";
+  }
+}
 
 function subscribe(callback: () => void) {
+  const onChange = () => { normalizeStorage(); callback(); };
   const onStorage = (event: StorageEvent) => {
-    if (event.storageArea === window.sessionStorage && (event.key === rideStorageKey || event.key === null)) callback();
+    if (event.key === rideStorageKey || event.key === null) onChange();
   };
-  window.addEventListener(changeEvent, callback);
+  window.addEventListener(changeEvent, onChange);
   window.addEventListener("storage", onStorage);
-  window.addEventListener("pageshow", callback);
+  window.addEventListener("pageshow", onChange);
+  onChange();
+  const timer = window.setInterval(onChange, demoTickIntervalMs);
   return () => {
-    window.removeEventListener(changeEvent, callback);
+    window.removeEventListener(changeEvent, onChange);
     window.removeEventListener("storage", onStorage);
-    window.removeEventListener("pageshow", callback);
+    window.removeEventListener("pageshow", onChange);
+    window.clearInterval(timer);
   };
 }
 
 function snapshot() {
   try {
+    if (migrationError !== null) return migrationFailed + migrationError;
     return window.sessionStorage.getItem(rideStorageKey);
   } catch {
     return unavailable;
@@ -40,6 +61,7 @@ export function useRideDemo() {
   const result = useMemo(() => {
     if (raw === loading) return { session: null, error: null };
     if (raw === unavailable) return { session: null, error: "No se puede acceder a sessionStorage. Permite el almacenamiento de sesión para usar el demo." };
+    if (raw?.startsWith(migrationFailed)) return { session: null, error: `No se pudo guardar la migración del demo: ${raw.slice(migrationFailed.length)}` };
     try {
       return { session: decodeRideSession(raw), error: null };
     } catch {
@@ -68,10 +90,11 @@ export function useRideDemo() {
 
   return {
     session: result.session,
+    notices: result.session?.notices ?? [],
     ready: raw !== loading,
     error: actionError ?? result.error,
     create: (input: RideInput) => save((session) =>
-      addRide(session, createRide(input, `RIDE-DEMO-${crypto.randomUUID()}`, new Date().toISOString()))),
+      addRide(session, createRide(input, `RIDE-DEMO-${crypto.randomUUID()}`, new Date().toISOString(), demoRideProvider.estimate()))),
     act: (id: string, action: RideAction) => save((session) =>
       updateRide(session, id, action, new Date().toISOString())),
     select: (id: string) => save((session) => {

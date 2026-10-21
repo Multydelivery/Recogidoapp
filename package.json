@@ -12,6 +12,7 @@
     "test:driver": "node --import ./tests/register-typescript.mjs --test tests/driver-demo.test.mjs tests/driver-live.test.mjs",
     "test:driver:http": "node --test tests/driver-http.test.mjs",
     "test:ordering": "node --import ./tests/register-typescript.mjs --test tests/ordering.test.mjs",
+    "test:rides": "node --import ./tests/register-typescript.mjs --test tests/rides-demo.test.mjs",
     "test:pwa": "node --import ./tests/register-typescript.mjs --test tests/driver-pwa.test.mjs"
   },
   "dependencies": {
